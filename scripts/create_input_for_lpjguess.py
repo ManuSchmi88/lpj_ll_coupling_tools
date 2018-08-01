@@ -106,7 +106,7 @@ def derive_base_info(ll_inpath):
     types = ('*.nc', '*.NC')
     files_grabbed = []
     for files in types:
-        files_grabbed.extend(glob.glob(files))
+        files_grabbed.extend(glob.glob(os.path.join(ll_inpath, files)))
     
     # get global attributes (lat, lon, classification)
     # check that classifiaction match
@@ -127,14 +127,15 @@ def derive_base_info(ll_inpath):
             print("Check global attributes")
             continue
     
-    if set(classifications) != 1:
-        print("Classification attributes differ. Check files.")            
+    if len(set(classifications)) != 1:
+        print("Classification attributes differ. Check files.")
+        print(classifications)            
         exit(-1)
         
     return (classifications[0].upper(), valid_files, coordinates)
     
 
-def extract_variables_from_landlab_ouput(ds_ll):
+def extract_variables_from_landlab_ouput(ll_file):
     """Extract 2d data from raw LandLab output and convert to
     lpjguesstool intermediate format. 
     """
@@ -146,25 +147,30 @@ def extract_variables_from_landlab_ouput(ds_ll):
               'aspectSlope': 'asp_slope',
               'landform__ID': 'landform_class'
               }
-    # 'landform__ID' - use this to split into aspect_class, landform_class
-    # TODO: if flat in aspect is 0 or -1
+
+    ds_ll = xr.open_dataset(ll_file)
 
     # copy data arrays to new file, squeeze, and rename with mapper
     ds = ds_ll.squeeze()[list(mapper.keys())].rename(mapper)
     ds['landform'] = ds_ll.squeeze()['landform__ID'] // 100 % 10  # second last digit
     ds['aspect_class'] = ds_ll.squeeze()['landform__ID'] % 10           # last digit
 
+    print(ds)
+
     return ds
 
 
 def main():
-
-    # default soil and elevation data (contained in package)
-    import pkg_resources
+    import pkgutil
+    # default soil and elevation data (contained in lpjguesstools package)
     SOIL_NC      = 'GLOBAL_WISESOIL_DOM_05deg.nc'
     ELEVATION_NC = 'GLOBAL_ELEVATION_05deg.nc'
+    SOIL_NC = pkgutil.get_data("lpjguesstools/data", SOIL_NC)
+    ELEVATION_NC = pkgutil.get_data("lpjguesstools/data", SOIL_NC)
 
-    list_ds_landlab = []
+    print(SOIL_NC)
+
+    LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
 
     classification, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
 
@@ -173,15 +179,17 @@ def main():
                      CLASSIFICATION=classification, 
                      GRIDLIST_TXT='lpj2ll_gridlist.txt'))
 
-    for landlab_file in landlab_files:
+    #for landlab_file in landlab_files:
+    #
+    #    ds_landlab = compute_spatial_dataset_landlab(landlab_dem_file, lf_ele_levels)
+    #    list_ds_landlab.append( ds_landlab )
+    #    
+    #    # write files to compare with manu
+    #    ds_landlab.to_netcdf(landlab_dem_file[:-3] + '_info.nc', format='NETCDF4_CLASSIC')
 
-        ds_landlab = compute_spatial_dataset_landlab(landlab_dem_file, lf_ele_levels)
-        list_ds_landlab.append( ds_landlab )
-        
-        # write files to compare with manu
-        ds_landlab.to_netcdf(landlab_dem_file[:-3] + '_info.nc', format='NETCDF4_CLASSIC')
-    
-    df_frac, df_elev, df_slope, df_asp_slope, df_aspect = compute_statistics_landlab(list_ds_landlab, list_coords)
+    landlab_files = [extract_variables_from_landlab_ouput(x) for x in landlab_files]
+
+    df_frac, df_elev, df_slope, df_asp_slope, df_aspect = compute_statistics_landlab(landlab_files, list_coords)
 
     # build netcdfs
     log.info("Building 2D netCDF files")
