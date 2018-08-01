@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 pandas = "*"
 "netcdf4" = "*"
+xarray = "*"
+lpjguesstools = {editable = true, git = "https://gitlab.com/cw_code/lpjguesstools.git"}
 
 [dev-packages]
 
