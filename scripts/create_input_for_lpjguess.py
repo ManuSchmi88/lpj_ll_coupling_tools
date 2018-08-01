@@ -36,6 +36,7 @@ from lpjguesstools.lgt_createinput.main import define_landform_classes, \
                                                build_compressed, \
                                                create_gridlist
 
+from lpjguesstools.lgt_createinput import _xr_tile
 
 log = logging.getLogger(__name__)
 
