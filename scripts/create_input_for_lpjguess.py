@@ -12,6 +12,8 @@ import logging
 import numpy as np
 import glob
 import os
+import sys
+
 import pandas as pd
 import xarray as xr
 
@@ -159,16 +161,21 @@ def extract_variables_from_landlab_ouput(ll_file):
 
     return ds
 
+def get_data_location(pkg, resource):
+    """Hack to return the data location and not the actual data
+    that pkgutil.get_data() returns.
+    """
+    d = os.path.dirname(sys.modules[pkg].__file__)
+    return os.path.join(d, resource)
 
 def main():
-    import pkgutil
+
+
     # default soil and elevation data (contained in lpjguesstools package)
     SOIL_NC      = 'GLOBAL_WISESOIL_DOM_05deg.nc'
     ELEVATION_NC = 'GLOBAL_ELEVATION_05deg.nc'
-    SOIL_NC = pkgutil.get_data("lpjguesstools/data", SOIL_NC)
-    ELEVATION_NC = pkgutil.get_data("lpjguesstools/data", SOIL_NC)
-
-    print(SOIL_NC)
+    SOIL_NC = get_data_location("lpjguesstools", "data/"+SOIL_NC)
+    ELEVATION_NC = get_data_location("lpjguesstools", "data/"+ELEVATION_NC)
 
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
 
@@ -178,14 +185,6 @@ def main():
     cfg = Bunch(dict(OUTDIR='.', 
                      CLASSIFICATION=classification, 
                      GRIDLIST_TXT='lpj2ll_gridlist.txt'))
-
-    #for landlab_file in landlab_files:
-    #
-    #    ds_landlab = compute_spatial_dataset_landlab(landlab_dem_file, lf_ele_levels)
-    #    list_ds_landlab.append( ds_landlab )
-    #    
-    #    # write files to compare with manu
-    #    ds_landlab.to_netcdf(landlab_dem_file[:-3] + '_info.nc', format='NETCDF4_CLASSIC')
 
     landlab_files = [extract_variables_from_landlab_ouput(x) for x in landlab_files]
 
