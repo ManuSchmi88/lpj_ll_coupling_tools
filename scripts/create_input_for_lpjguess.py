@@ -10,6 +10,7 @@
 from collections import OrderedDict
 import logging
 import numpy as np
+import glob
 import os
 import pandas as pd
 import xarray as xr
@@ -96,6 +97,66 @@ def compute_statistics_landlab(list_ds, list_coords):
     aspect_lf = create_stats_table(df, 'aspect')
     return (frac_lf, elev_lf, slope_lf, asp_slope_lf, aspect_lf)
 
+
+
+def derive_base_info(ll_inpath):
+    """Derive the locations and landform classification
+    mode from the landlab grid files"""
+
+    types = ('*.nc', '*.NC')
+    files_grabbed = []
+    for files in types:
+        files_grabbed.extend(glob.glob(files))
+    
+    # get global attributes (lat, lon, classification)
+    # check that classifiaction match
+    coordinates = []
+    classifications = []
+    valid_files = []
+    
+    for file in files_grabbed:
+        ds = xr.open_dataset(file)
+        attrs = ds.attrs
+
+        if {'lgt.lon', 'lgt.lat', 'lgt.classification'}.issubset( set(attrs.keys() )):
+            coordinates.append((attrs['lgt.lat'], attrs['lgt.lon']))
+            classifications.append(attrs['lgt.classification'])
+            valid_files.append(file)
+        else:
+            print(f"File {file} does not conform to the format convention.")
+            print("Check global attributes")
+            continue
+    
+    if set(classifications) != 1:
+        print("Classification attributes differ. Check files.")            
+        exit(-1)
+        
+    return (classifications[0].upper(), valid_files, coordinates)
+    
+
+def extract_variables_from_landlab_ouput(ds_ll):
+    """Extract 2d data from raw LandLab output and convert to
+    lpjguesstool intermediate format. 
+    """
+    # simple rename
+    mapper = {'topographic__elevation' : 'elevation',
+              'topographic__steepest_slope': 'slope',
+              'tpi__mask': 'mask',
+              'aspect' : 'aspect',
+              'aspectSlope': 'asp_slope',
+              'landform__ID': 'landform_class'
+              }
+    # 'landform__ID' - use this to split into aspect_class, landform_class
+    # TODO: if flat in aspect is 0 or -1
+
+    # copy data arrays to new file, squeeze, and rename with mapper
+    ds = ds_ll.squeeze()[list(mapper.keys())].rename(mapper)
+    ds['landform'] = ds_ll.squeeze()['landform__ID'] // 100 % 10  # second last digit
+    ds['aspect_class'] = ds_ll.squeeze()['landform__ID'] % 10           # last digit
+
+    return ds
+
+
 def main():
 
     # default soil and elevation data (contained in package)
@@ -104,29 +165,18 @@ def main():
     ELEVATION_NC = 'GLOBAL_ELEVATION_05deg.nc'
 
     list_ds_landlab = []
-    list_coords = []
+
+    classification, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
 
     # config object / totally overkill here but kept for consistency
     cfg = Bunch(dict(OUTDIR='.', 
-                     CLASSIFICATION='SIMPLE', 
+                     CLASSIFICATION=classification, 
                      GRIDLIST_TXT='lpj2ll_gridlist.txt'))
 
-    for landlab_dem_file in ['10Perc_SS_Topo_rot90.nc', '70Perc_SS_Topo_rot90.nc']:
-
-        if '10Perc_SS' in landlab_dem_file:
-            tile_avg = 259.33
-            lat = -26.25
-            lon = -70.75
-        elif '70Perc_SS' in landlab_dem_file:
-            tile_avg = 401.46
-            lat = -32.75
-            lon = -71.25
-
-        lf_classes, lf_ele_levels = define_landform_classes(200, 6000, TYPE=cfg.CLASSIFICATION)
+    for landlab_file in landlab_files:
 
         ds_landlab = compute_spatial_dataset_landlab(landlab_dem_file, lf_ele_levels)
         list_ds_landlab.append( ds_landlab )
-        list_coords.append( (lat,lon) )
         
         # write files to compare with manu
         ds_landlab.to_netcdf(landlab_dem_file[:-3] + '_info.nc', format='NETCDF4_CLASSIC')
