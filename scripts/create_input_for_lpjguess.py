@@ -9,6 +9,7 @@
 
 from collections import OrderedDict
 import logging
+import math
 import numpy as np
 import glob
 import os
@@ -37,6 +38,7 @@ from lpjguesstools.lgt_createinput.main import define_landform_classes, \
                                                create_gridlist
 
 from lpjguesstools.lgt_createinput import _xr_tile
+from lpjguesstools.lgt_createinput import _xr_geo
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +102,15 @@ def compute_statistics_landlab(list_ds, list_coords):
     aspect_lf = create_stats_table(df, 'aspect')
     return (frac_lf, elev_lf, slope_lf, asp_slope_lf, aspect_lf)
 
+def derive_region(coords):
+    """Derive bounding box for all coorinates.
+    """
+    lats, lons = zip(*coords)
+    min_lat = math.floor(min(lats))
+    max_lat = math.ceil(max(lats))
+    min_lon = math.floor(min(lons))
+    max_lon = math.ceil(max(lons))
+    return [min_lon, min_lat, max_lon, max_lat]
 
 
 def derive_base_info(ll_inpath):
@@ -116,26 +127,30 @@ def derive_base_info(ll_inpath):
     coordinates = []
     classifications = []
     valid_files = []
+    ele_steps = []
     
     for file in files_grabbed:
         ds = xr.open_dataset(file)
         attrs = ds.attrs
 
-        if {'lgt.lon', 'lgt.lat', 'lgt.classification'}.issubset( set(attrs.keys() )):
+        if {'lgt.lon', 'lgt.lat', 'lgt.classification', 'lgt.elevation_step'}.issubset( set(attrs.keys() )):
             coordinates.append((attrs['lgt.lat'], attrs['lgt.lon']))
             classifications.append(attrs['lgt.classification'])
+            ele_steps.append(attrs['lgt.elevation_step'])
+            
             valid_files.append(file)
         else:
             print(f"File {file} does not conform to the format convention.")
             print("Check global attributes")
             continue
     
-    if len(set(classifications)) != 1:
+    if len(set(classifications)) != 1 or len(set(ele_steps)) != 1:
         print("Classification attributes differ. Check files.")
-        print(classifications)            
+        print(classifications)
+        print(ele_steps)            
         exit(-1)
         
-    return (classifications[0].upper(), valid_files, coordinates)
+    return (classifications[0].upper(), ele_steps[0], valid_files, coordinates)
     
 
 def extract_variables_from_landlab_ouput(ll_file):
@@ -158,8 +173,6 @@ def extract_variables_from_landlab_ouput(ll_file):
     ds['landform'] = ds_ll.squeeze()['landform__ID'] // 100 % 10  # second last digit
     ds['aspect_class'] = ds_ll.squeeze()['landform__ID'] % 10           # last digit
 
-    print(ds)
-
     return ds
 
 def get_data_location(pkg, resource):
@@ -179,11 +192,16 @@ def main():
     ELEVATION_NC = get_data_location("lpjguesstools", "data/"+ELEVATION_NC)
 
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
+    LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
 
-    classification, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
+    classification, ele_step, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
+
+
+
+    lf_classes, lf_ele_levels = define_landform_classes(ele_step, 6000, TYPE=classification)
 
     # config object / totally overkill here but kept for consistency
-    cfg = Bunch(dict(OUTDIR='.', 
+    cfg = Bunch(dict(OUTDIR=LPJGUESS_INPUT_PATH, 
                      CLASSIFICATION=classification, 
                      GRIDLIST_TXT='lpj2ll_gridlist.txt'))
 
@@ -193,10 +211,17 @@ def main():
 
     # build netcdfs
     log.info("Building 2D netCDF files")
-    dummy_region = [-71.5, -33, -70.5, -26]
-    sitenc = build_site_netcdf(SOIL_NC, ELEVATION_NC, extent=dummy_region)
-    landformnc = build_landform_netcdf(lf_classes, df_frac, df_elev, df_slope, df_asp_slope, df_aspect, cfg,
-                                           lf_ele_levels, refnc=sitenc)
+
+    simulation_domain = derive_region(list_coords)
+    sitenc = build_site_netcdf(SOIL_NC, ELEVATION_NC, extent=simulation_domain)
+    landformnc = build_landform_netcdf(lf_classes, 
+                                       df_frac,
+                                       df_elev,
+                                       df_slope,
+                                       df_asp_slope,
+                                       df_aspect,
+                                       cfg,
+                                       lf_ele_levels, refnc=sitenc)
 
     elev_mask = ~np.ma.getmaskarray(sitenc['elevation'].to_masked_array())
     sand_mask = ~np.ma.getmaskarray(sitenc['sand'].to_masked_array())
@@ -208,7 +233,6 @@ def main():
 
     landform_mask = np.where(landformnc['lfcnt'].values == -9999, np.nan, 1)
     #landform_mask = np.where(landform_mask == True, np.nan, 1)
-    print(landform_mask)
     for v in sitenc.data_vars:
         sitenc[v][:] = sitenc[v].values * landform_mask
 

@@ -120,7 +120,7 @@
         "lpjguesstools": {
             "editable": true,
             "git": "https://gitlab.com/cw_code/lpjguesstools.git",
-            "ref": "1e66adf6ac8374ecdc3b4f650f96a447b12043bc"
+            "ref": "ce09ac51a310dd8755d7b4f4be9af7cca2d69063"
         },
         "munch": {
             "hashes": [
