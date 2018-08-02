@@ -15,7 +15,10 @@ def read_csv_files(filename):
         tree_fpc[1] = according vegetation cover
     """
     
-    fpc_array = np.genfromtxt(filename, delimiter = ';', names = True)
+    fpc_array = np.genfromtxt(filename, delimiter = ';')
+
+    #divide through 100 cause PERCENT BITCHES
+    fpc_array[1]= fpc_array[1]* 0.01
 
     return fpc_array
 
@@ -31,9 +34,13 @@ def map_fpc_per_landform_on_grid(grid, fpc_array):
 
     #creates grid_structure for landlab
     fpc_grid = np.zeros(np.shape(grid.at_node['landform__ID']))
-    
-    for landform in fpc_array[0]:
-        fpc_grid[grid.at_node['landform__ID'] == landform] = fpc_array[str(landform)]
+
+    #split fpc_array up, for convienience
+    landforms = fpc_array[0]
+    fpc_values = fpc_array[1]
+
+    for lf in landforms:
+        fpc_grid[np.where(grid.at_node['landform__ID'] == lf)] = fpc_values[np.where(landforms == lf)]
 
     return fpc_grid
 
@@ -51,10 +58,10 @@ def calc_cumulative_fpc(tree_fpc, grass_fpc, shrub_fpc):
     return cumulative_fpc
 
 
-def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
+def lpj_import_run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
     
     #read different files
-    tree_fpc = read_csv_files(treefile)
+    tree_fpc  = read_csv_files(treefile)
     shrub_fpc = read_csv_files(shrubfile)
     grass_fpc = read_csv_files(grassfile)
 
@@ -62,7 +69,7 @@ def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
         #calculate cumulative 
         cum_fpc = calc_cumulative_fpc(tree_fpc, grass_fpc, shrub_fpc) 
         #map on landlab grid
-        mg.at_node['vegetation__density'] = map_fpc_per_landform_on_grid(grid, cum_fpc)
+        grid.at_node['vegetation__density'] = map_fpc_per_landform_on_grid(grid, cum_fpc)
 
     
     if method == 'individual':
@@ -72,8 +79,8 @@ def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
         grid.add_zeros('shrub_fpc')
         
         #map values to individual fiels 
-        mg.at_noda['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
-        mg.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
-        mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
+        grid.at_noda['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
+        grid.at_node['tree_fpc']  = map_fpc_per_landform_on_grid(grid, tree_fpc)
+        grid.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
      
     

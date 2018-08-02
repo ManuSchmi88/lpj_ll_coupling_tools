@@ -16,6 +16,7 @@ from landlab import RasterModelGrid
 from landlab import CLOSED_BOUNDARY, FIXED_VALUE_BOUNDARY
 from landlab.components.flow_routing import FlowRouter
 from landlab.components import ExponentialWeatherer
+from landlab.components import drainage_density
 from landlab.components import LinearDiffuser
 from landlab.components import Space
 from landlab.components import DepressionFinderAndRouter
@@ -33,16 +34,12 @@ import time
 #THIS NEEDS TO GO IN A LANDLAB-COMPONENT
 from inputFile import *
 from lpj_landlab_import import *
+from create_input_for_landlab import *
 
 #input-processing:
 #Number of total-timestep (nt) and spin-up timesteps (ssnt)
 nt = int(totalT / dt)
 ssnt = int(ssT / dt)
-#ssntSF = int(sfT / dt) #DELETE THIS LATER. SWITCH EVERYTHING TO SSNT
-#time-vector (total and transient), used for plotting later
-timeVec = np.arange(0, totalT, dt)
-transTimeVec = np.arange(0, (totalT - ssT), dt)
-transientRainfallTimespan = int(totalT - ssT)
 #calculate the uplift per timestep
 uplift_per_step = upliftRate * dt
 #Number of total produced outputs
@@ -112,13 +109,9 @@ print("finished with setup of modelgrid")
 print("---------------------")
 
 ##---------------------------------Vegi implementation--------------------------#
-##Set up a timeseries for vegetation-densities
-##This basically assumes that for a spin-up time (ssT) we have constant vegetation
-##cover (vp) and after that we get change vegetation cover as a sin-function
-vegiTimeseries  = np.zeros(int(totalT / dt)) + vp
+#run landform classifier once to create landform__ID
 
-#set 'vegetation__density' to vp for spin-up-time
-mg.at_node['vegetation__density'][:] = vp
+
 #This maps the vegetation density on the nodes to the links between the nodes
 vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 
@@ -140,10 +133,6 @@ print("---------------------")
 ##---------------------------------Rain implementation--------------------------#
 #set 'rainvalue' to baseRainfall for spin-up
 mg.at_node['rainvalue'][:] = int(baseRainfall)
-
-##---------------------------------loadLPJ-Input--------------------------------#
-lfIDs, vegetationData = createVegiTimeseriesFromCsv('./input/egu18.s1_def_180ppm_lfid_fpc_100yr.csv')
-precip = getMAPTimeseriesFromCSV('./input/egu18.s1_def_180ppm_lfid_prec_100yr.csv')
 
 ##---------------------------------Array initialization---------------------#
 ##This initializes all the arrays that are used to store data during the runtime
@@ -223,6 +212,13 @@ while elapsed_time < totalT:
     #sf.calculate_steepnesses()
     lc.run_one_step(elevationStepBin , 300, classtype = classificationType)
 
+    #run importer once, just for testing
+    lpj_import_run_one_step(mg, file_tree_fpc, file_shrub_fpc, file_grass_fpc, method = 'cumulative')
+
+    #for bugfixing:
+    #print(np.mean(mg.at_node['vegetation__density']))
+
+
     #apply uplift
     mg.at_node['bedrock__elevation'][mg.core_nodes] += uplift_per_step
 
@@ -262,11 +258,11 @@ while elapsed_time < totalT:
     mean_hill_E.append(np.mean(upliftRate - dhdt_hill))
 
     #update vegetation__density with LPJ_Output
-    if elapsed_time < spin_up:
-        mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, 0)
-    else:
-        mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, counter)
-    vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
+    #if elapsed_time < spin_up:
+    #    mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, 0)
+    #else:
+    #    mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, counter)
+    #vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 
     #update LinearDiffuser
     linDiff = linDiffBase*np.exp(-alphaDiff * vegiLinks)
@@ -281,21 +277,21 @@ while elapsed_time < totalT:
     sp.K_sed = Kv
 
     #update Rainfallvalues
-    if elapsed_time < spin_up:
-        rainValue = baseRainfall
-    else:
-        rainValue = precip[counter]
+    #if elapsed_time < spin_up:
+    #    rainValue = baseRainfall
+    #else:
+    #    rainValue = precip[counter]
 
-    mg.at_node['rainvalue'][:] = rainValue
-    fr = FlowRouter(mg, runoff_rate = rainValue)
+    #mg.at_node['rainvalue'][:] = rainValue
+    #fr = FlowRouter(mg, runoff_rate = rainValue)
 
     #only increment counter if above spin-up
-    if elapsed_time < spin_up:
-        counter = 0
-    else:
-        counter += 1
-        if counter == 349:  #DIRTY!!! Hardcoding of reset-time!!!!
-            counter = 0
+    #if elapsed_time < spin_up:
+    #    counter = 0
+    #else:
+    #    counter += 1
+    #    if counter == 349:  #DIRTY!!! Hardcoding of reset-time!!!!
+    #        counter = 0
 
     
     #Calculate and save mean, max, min slopes

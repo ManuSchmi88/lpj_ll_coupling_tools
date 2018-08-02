@@ -1,4 +1,4 @@
-    import numpy as np
+import numpy as np
 
 """
 Script that takes LPJGUESS .csv output and creates
@@ -8,7 +8,7 @@ the node-ids within landlab.
 For further information about node-ids, look up
 the landformClassifier component in Landlab-ESD-codebase
 
-
+ 
 Created by Manuel Schmid, 16.07.2018
 """
 
