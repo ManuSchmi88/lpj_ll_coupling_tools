@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 #
-# hacky input generator based on the lpjguesstools lgt_createinput suite
+# create_input_for_lpjguess.py
+# ============================
 #
-# TODO:
-# refactor into lpjguesstools once abstractions are clear:
-# - (1) as second main function to lgt_createinput ?
-# - (2) as a submodule in the library similar to plotting
-
+# take LandLab output grids and convert them to compressed
+# LPJ-GUESS (subpixel) netcdf inputs
+#
+# Christian Werner (christian.werner@senckenberg.de)
+# 2018-08-02
 
 from collections import OrderedDict
 import logging
@@ -17,16 +19,6 @@ import sys
 
 import pandas as pd
 import xarray as xr
-
-from lpjguesstools.lgt_createinput._geoprocessing import calc_slope_components, \
-                                                         calc_slope, \
-                                                         calc_aspect, \
-                                                         classify_aspect, \
-                                                         classify_landform, \
-                                                         calculate_asp_slope, \
-                                                         create_tile
-
-from lpjguesstools.lgt_createinput._tpi import calculate_tpi
 
 from lpjguesstools.lgt_createinput.main import define_landform_classes, \
                                                get_tile_summary, \
@@ -49,35 +41,6 @@ class Bunch(object):
     def overwrite(self, adict):
         self.__dict__.update(adict)
 
-
-def compute_spatial_dataset_landlab(fname_dem, lf_ele_levels):
-    """Take a NetCDF file name and return a xarray datasets of dem, slope,
-    aspect and water mask layers."""
-    
-    log.info('Opening file %s ...' % fname_dem)
-
-    dx = 100   # landlab [m], use to be 30
-    tpi_radius = 300
-
-    with xr.open_dataset(fname_dem) as src:
-        dem = src['topographic__elevation'].squeeze().to_masked_array()
-        dem_mask = np.ma.ones(dem.shape)
-
-        dem_filled = dem.copy() # not necessary here, but in for consistency
-
-        Sx, Sy = calc_slope_components(dem_filled, dx)
-        slope = calc_slope(Sx, Sy)
-        aspect = calc_aspect(Sx, Sy)
-        landform = calculate_tpi(dem_filled, slope, tpi_radius, res=dx, TYPE='SIMPLE')
-
-        # check what info and source expect
-        ds = create_tile(dem, dem_mask, slope, aspect, landform)
-
-        classify_aspect(ds)
-        classify_landform(ds, elevation_levels=lf_ele_levels, TYPE='SIMPLE')
-        calculate_asp_slope(ds)
-
-    return ds
 
 def compute_statistics_landlab(list_ds, list_coords):
     
@@ -183,20 +146,17 @@ def get_data_location(pkg, resource):
     return os.path.join(d, resource)
 
 def main():
-
-
     # default soil and elevation data (contained in lpjguesstools package)
     SOIL_NC      = 'GLOBAL_WISESOIL_DOM_05deg.nc'
     ELEVATION_NC = 'GLOBAL_ELEVATION_05deg.nc'
     SOIL_NC = get_data_location("lpjguesstools", "data/"+SOIL_NC)
     ELEVATION_NC = get_data_location("lpjguesstools", "data/"+ELEVATION_NC)
 
+    # get path info for in- and output
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
     LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
 
     classification, ele_step, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
-
-
 
     lf_classes, lf_ele_levels = define_landform_classes(ele_step, 6000, TYPE=classification)
 
