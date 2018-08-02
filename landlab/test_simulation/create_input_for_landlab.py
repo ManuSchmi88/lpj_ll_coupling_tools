@@ -74,12 +74,15 @@ def lpj_import_run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumu
     
     if method == 'individual':
         #add individual landlab fields to the grid
-        grid.add_zeros('grass_fpc')
-        grid.add_zeros('tree_fpc')
-        grid.add_zeros('shrub_fpc')
+        if {'grass_fpc', 'tree_fpc', 'shrub_fpc'}.issubset(set(grid.at_node.keys())):
+            print('individual _fpc fields do exist already')
+        else:
+            grid.add_zeros('node','grass_fpc')
+            grid.add_zeros('node','tree_fpc')
+            grid.add_zeros('node','shrub_fpc')
         
         #map values to individual fiels 
-        grid.at_noda['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
+        grid.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
         grid.at_node['tree_fpc']  = map_fpc_per_landform_on_grid(grid, tree_fpc)
         grid.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
      
