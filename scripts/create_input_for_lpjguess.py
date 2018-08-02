@@ -43,7 +43,6 @@ class Bunch(object):
 
 
 def compute_statistics_landlab(list_ds, list_coords):
-    
     tiles_stats = []
     for ds, coord in zip(list_ds, list_coords):
         lf_stats = get_tile_summary(ds)     # no cutoff for now
@@ -63,7 +62,8 @@ def compute_statistics_landlab(list_ds, list_coords):
     slope_lf = create_stats_table(df, 'slope')
     asp_slope_lf = create_stats_table(df, 'asp_slope')
     aspect_lf = create_stats_table(df, 'aspect')
-    return (frac_lf, elev_lf, slope_lf, asp_slope_lf, aspect_lf)
+    soildepth_lf = create_stats_table(df, 'soildepth')
+    return (frac_lf, elev_lf, slope_lf, asp_slope_lf, aspect_lf, soildepth_lf)
 
 def derive_region(coords):
     """Derive bounding box for all coorinates.
@@ -126,7 +126,8 @@ def extract_variables_from_landlab_ouput(ll_file):
               'tpi__mask': 'mask',
               'aspect' : 'aspect',
               'aspectSlope': 'asp_slope',
-              'landform__ID': 'landform_class'
+              'landform__ID': 'landform_class',
+              'soil__depth': 'soildepth'
               }
 
     ds_ll = xr.open_dataset(ll_file)
@@ -167,21 +168,18 @@ def main():
 
     landlab_files = [extract_variables_from_landlab_ouput(x) for x in landlab_files]
 
-    df_frac, df_elev, df_slope, df_asp_slope, df_aspect = compute_statistics_landlab(landlab_files, list_coords)
+    df_frac, df_elev, df_slope, df_asp_slope, df_aspect, df_soildepth = compute_statistics_landlab(landlab_files, list_coords)
 
     # build netcdfs
     log.info("Building 2D netCDF files")
 
     simulation_domain = derive_region(list_coords)
     sitenc = build_site_netcdf(SOIL_NC, ELEVATION_NC, extent=simulation_domain)
-    landformnc = build_landform_netcdf(lf_classes, 
-                                       df_frac,
-                                       df_elev,
-                                       df_slope,
-                                       df_asp_slope,
-                                       df_aspect,
-                                       cfg,
-                                       lf_ele_levels, refnc=sitenc)
+
+    df_dict = dict(frac_lf=df_frac, elev_lf=df_elev, slope_lf=df_slope, 
+                   asp_slope_lf=df_asp_slope, aspect_lf=df_aspect, soildepth_lf=df_soildepth)
+
+    landformnc = build_landform_netcdf(lf_classes, df_dict, cfg, lf_ele_levels, refnc=sitenc)
 
     elev_mask = ~np.ma.getmaskarray(sitenc['elevation'].to_masked_array())
     sand_mask = ~np.ma.getmaskarray(sitenc['sand'].to_masked_array())
