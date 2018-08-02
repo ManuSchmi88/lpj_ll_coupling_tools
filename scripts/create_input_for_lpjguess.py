@@ -18,16 +18,6 @@ import sys
 import pandas as pd
 import xarray as xr
 
-from lpjguesstools.lgt_createinput._geoprocessing import calc_slope_components, \
-                                                         calc_slope, \
-                                                         calc_aspect, \
-                                                         classify_aspect, \
-                                                         classify_landform, \
-                                                         calculate_asp_slope, \
-                                                         create_tile
-
-from lpjguesstools.lgt_createinput._tpi import calculate_tpi
-
 from lpjguesstools.lgt_createinput.main import define_landform_classes, \
                                                get_tile_summary, \
                                                create_stats_table, \
@@ -49,35 +39,6 @@ class Bunch(object):
     def overwrite(self, adict):
         self.__dict__.update(adict)
 
-
-def compute_spatial_dataset_landlab(fname_dem, lf_ele_levels):
-    """Take a NetCDF file name and return a xarray datasets of dem, slope,
-    aspect and water mask layers."""
-    
-    log.info('Opening file %s ...' % fname_dem)
-
-    dx = 100   # landlab [m], use to be 30
-    tpi_radius = 300
-
-    with xr.open_dataset(fname_dem) as src:
-        dem = src['topographic__elevation'].squeeze().to_masked_array()
-        dem_mask = np.ma.ones(dem.shape)
-
-        dem_filled = dem.copy() # not necessary here, but in for consistency
-
-        Sx, Sy = calc_slope_components(dem_filled, dx)
-        slope = calc_slope(Sx, Sy)
-        aspect = calc_aspect(Sx, Sy)
-        landform = calculate_tpi(dem_filled, slope, tpi_radius, res=dx, TYPE='SIMPLE')
-
-        # check what info and source expect
-        ds = create_tile(dem, dem_mask, slope, aspect, landform)
-
-        classify_aspect(ds)
-        classify_landform(ds, elevation_levels=lf_ele_levels, TYPE='SIMPLE')
-        calculate_asp_slope(ds)
-
-    return ds
 
 def compute_statistics_landlab(list_ds, list_coords):
     
