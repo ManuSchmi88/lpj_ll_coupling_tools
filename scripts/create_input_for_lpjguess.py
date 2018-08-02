@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 #
-# hacky input generator based on the lpjguesstools lgt_createinput suite
+# create_input_for_lpjguess.py
+# ============================
 #
-# TODO:
-# refactor into lpjguesstools once abstractions are clear:
-# - (1) as second main function to lgt_createinput ?
-# - (2) as a submodule in the library similar to plotting
-
+# take LandLab output grids and convert them to compressed
+# LPJ-GUESS (subpixel) netcdf inputs
+#
+# Christian Werner (christian.werner@senckenberg.de)
+# 2018-08-02
 
 from collections import OrderedDict
 import logging
@@ -144,20 +146,17 @@ def get_data_location(pkg, resource):
     return os.path.join(d, resource)
 
 def main():
-
-
     # default soil and elevation data (contained in lpjguesstools package)
     SOIL_NC      = 'GLOBAL_WISESOIL_DOM_05deg.nc'
     ELEVATION_NC = 'GLOBAL_ELEVATION_05deg.nc'
     SOIL_NC = get_data_location("lpjguesstools", "data/"+SOIL_NC)
     ELEVATION_NC = get_data_location("lpjguesstools", "data/"+ELEVATION_NC)
 
+    # get path info for in- and output
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
     LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
 
     classification, ele_step, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
-
-
 
     lf_classes, lf_ele_levels = define_landform_classes(ele_step, 6000, TYPE=classification)
 
