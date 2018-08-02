@@ -75,7 +75,7 @@ def lpj_import_run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumu
     if method == 'individual':
         #add individual landlab fields to the grid
         if {'grass_fpc', 'tree_fpc', 'shrub_fpc'}.issubset(set(grid.at_node.keys())):
-            print('individual _fpc fields do exist already')
+            pass
         else:
             grid.add_zeros('node','grass_fpc')
             grid.add_zeros('node','tree_fpc')
