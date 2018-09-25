@@ -51,7 +51,7 @@ def read_csv_files(filename, ftype='lai', pft_class='total'):
     del df['Patch']
     df_grp = df.groupby(['Lon', 'Lat', 'Year', 'Stand']).mean()
     df_grp = df_grp.apply(_calc_fpc, 1).sum(axis=1)
-    df = df_grp[v].reset_index().set_index(['Year', 'Stand'])
+    df = df_grp.reset_index().set_index(['Year', 'Stand'])
     del x['Lon'], x['Lat']
     fpc_array = x.mean(level=1).T
     # fpc_array.to_csv(f'fpc_{v}.csv', index=False)
@@ -120,7 +120,7 @@ def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
     else:
         raise NotImplementedError 
     
-def run_one_step(grid, inputFile, method = 'cumulative'):
+def lpj_import_run_one_step(grid, inputFile, method = 'cumulative'):
     """
     main function for input_conversion to be called from landlab driver file
     """

@@ -213,8 +213,7 @@ while elapsed_time < totalT:
     lc.run_one_step(elevationStepBin , 300, classtype = classificationType)
 
     #run importer once, just for testing
-    lpj_import_run_one_step(mg, file_tree_fpc, file_shrub_fpc, file_grass_fpc,
-            method = 'cumulative')
+    lpj_import_run_one_step(mg, lpj_output, method = 'cumulative')
 
     #for bugfixing:
     #print(np.mean(mg.at_node['vegetation__density']))

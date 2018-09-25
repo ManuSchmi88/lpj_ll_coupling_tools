@@ -81,9 +81,7 @@ sinPeriod = 1e5 #yrs, period of sin-modification
 #LPJ_coupling_parameters:
 latitude   = -26.25 #center-coordinate of grid cell for model area
 longitude  = -70.75 #center-coordinate of grid cell for model area
-file_tree_fpc  = '../input/tree_fpc_cover_csv.csv'
-file_shrub_fpc = '../input/shrub_fpc_cover_csv.csv'
-file_grass_fpc = '../input/grass_fpc_cover_csv.csv'
+lpj_output = '../input/sp_lai.out'
 
 #landform classifier input:
 classificationType = 'SIMPLE'
