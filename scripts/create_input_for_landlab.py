@@ -119,5 +119,32 @@ def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
         mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
     else:
         raise NotImplementedError 
-     
     
+def run_one_step(grid, inputFile, method = 'cumulative'):
+    """
+    main function for input_conversion to be called from landlab driver file
+    """
+    
+    if method == 'cumulative':
+        cum_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'total')
+        grid.at_node['vegetation__density'] = map_fpc_per_landform_on_grid(grid, cum_fpc)
+
+    if method == 'individual':
+        #add individual landlab fields to the grid if they don't exist
+        if all(fpc in grid.keys() for fpc in ('grass_fpc', 'tree_fpc',
+            'shrub_fpc')):
+            #no need to initalize something. just do nothing
+            pass
+        else:
+            grid.add_zeros('grass_fpc')
+            grid.add_zeros('tree_fpc')
+            grid.add_zeros('shrub_fpc')
+
+        grass_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'grass')
+        tree_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'tree')
+        shrub_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'shrub')
+
+        #map values to individual fiels
+        mg.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
+        mg.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
+        mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
