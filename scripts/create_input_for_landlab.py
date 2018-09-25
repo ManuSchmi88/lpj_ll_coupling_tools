@@ -8,6 +8,7 @@ set of scripts which makes post-processed lpj-output landlab compatible
 
 def _calc_fpc(lai):
     """Calculate FPC using the LPJ-GUESS method
+
     """
     return (1.0 - np.exp(-0.5 * lai)) * 100
 
@@ -15,6 +16,8 @@ def _calc_fpc(lai):
 def read_csv_files(filename, ftype='lai', pft_class='total'):
     """
     reads in the out files from lpj and convertes to aggregated values
+    
+    sp_lai.out
 
     resulting 2D-arrays have format:
         
@@ -114,5 +117,7 @@ def run_one_step(grid, treefile, shrubfile, grassfile, method = 'cumulative') :
         mg.at_noda['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
         mg.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
         mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
+    else:
+        raise NotImplementedError 
      
     
