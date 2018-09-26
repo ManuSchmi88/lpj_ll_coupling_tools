@@ -216,7 +216,7 @@ while elapsed_time < totalT:
     lpj_import_run_one_step(mg, lpj_output, method = 'cumulative')
 
     #for bugfixing:
-    #print(np.mean(mg.at_node['vegetation__density']))
+    #print(np.max(mg.at_node['vegetation__density']))
 
 
     #apply uplift

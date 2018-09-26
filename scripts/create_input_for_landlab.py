@@ -59,6 +59,7 @@ def read_csv_files(filename, ftype='lai', pft_class='total'):
 
     # TODO: check if the values() conversion gives what we expect
 
+
     #'little' hacky right now. This returns a recarray object created
     #from pandas-dataframe.
     return fpc_array.to_records()
@@ -77,8 +78,7 @@ def map_fpc_per_landform_on_grid(grid, fpc_array):
     fpc_grid = np.zeros(np.shape(grid.at_node['landform__ID']))
     
     for landform in fpc_array.dtype.names[1:]:
-        fpc_grid[grid.at_node['landform__ID'] == landform] = fpc_array[str(landform)]
-
+        fpc_grid[grid.at_node['landform__ID'] == int(landform)] = fpc_array[str(landform)]
 
     return fpc_grid
 
@@ -104,7 +104,7 @@ def lpj_import_run_one_step(grid, inputFile, method = 'cumulative'):
         cum_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'total')
         grid.at_node['vegetation__density'] = map_fpc_per_landform_on_grid(grid, cum_fpc)
 
-    if method == 'individual':
+    elif method == 'individual':
         #add individual landlab fields to the grid if they don't exist
         if all(fpc in grid.keys() for fpc in ('grass_fpc', 'tree_fpc',
             'shrub_fpc')):
@@ -123,3 +123,6 @@ def lpj_import_run_one_step(grid, inputFile, method = 'cumulative'):
         mg.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
         mg.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
         mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
+
+    else: 
+        raise NotImplementedError
