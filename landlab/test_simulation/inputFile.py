@@ -28,14 +28,14 @@ nrows = 101 #number of rows
 dx    = 100 #spacing between nodes
 
 #Model Runtime Parameters
-totalT = 1.105e5 #total model runtime
-ssT    = 1.105e5  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
-sfT    = 1.105e5  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
-spin_up = 1.e6
+totalT = 20e6 #total model runtime
+ssT    = 20e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
+sfT    = 20e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
+spin_up = 20e6 
 dt = 100
 
 #Uplift
-upliftRate = 2.3e-4 #m/yr, Topographic uplift rate
+upliftRate = 2.e-4 #m/yr, Topographic uplift rate
 
 #Surface Processes
 #Linear Diffusion:
@@ -52,22 +52,22 @@ vRef        = 1    #1 = 100%, reference vegetation-cover for fully vegetated con
 w           = 1    #Scaling factor for vegetation-influence (see Istanbulluoglu and Bras 2005)
 
 #Fluvial Erosion/SPACE:
-k_sediment = 5e-7 
-k_bedrock  = 9e-6 
-Ff         = 0.0
+k_sediment = 1e-6 
+k_bedrock  = 1e-7 
+Ff         = 0 
 phi        = 0.1
-Hstar      = 5.
-vs         = 4. 
+Hstar      = 1.
+vs         = 5 
 m          = 0.5
 n          = 1
-sp_crit_sedi = 0#.00001
-sp_crit_bedrock = 0#.00001
+sp_crit_sedi = 2.e-4
+sp_crit_bedrock = 4.e-4
 solverMethod = 'simple_stream_power'
 solver = 'adaptive'
 
 #Lithology
 initialSoilDepth = 1 #m
-soilProductionRate = 0.002 #m/dt
+soilProductionRate = 0.0092 #m/dt
 
 #Climate Parameters
 baseRainfall = float(35) #m/dt, base steady-state rainfall-mean over the dt-timespan
@@ -88,4 +88,4 @@ classificationType = 'SIMPLE'
 elevationStepBin   = 200
 
 #output
-outInt = 1000 #yrs, model-time-interval in which output is created
+outInt = 50000 #yrs, model-time-interval in which output is created
