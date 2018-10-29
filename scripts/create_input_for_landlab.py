@@ -3,7 +3,9 @@ import xarray as xr
 import pandas as pd
 
 """
-set of scripts which makes post-processed lpj-output landlab compatible
+set of scripts which makes post-processed lpj-output landlab compatible.
+
+created by: Manuel Schmid, 29.10.2018
 """
 
 def _calc_fpc(lai):
