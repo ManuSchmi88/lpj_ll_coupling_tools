@@ -80,6 +80,7 @@ def map_fpc_per_landform_on_grid(grid, fpc_array):
     for landform in fpc_array.dtype.names[1:]:
         fpc_grid[grid.at_node['landform__ID'] == int(landform)] = fpc_array[str(landform)]
 
+    #print('map_fpc_per_landform_on_grid was run')
     return fpc_grid
 
 def calc_cumulative_fpc(tree_fpc, grass_fpc, shrub_fpc):
