@@ -1,11 +1,9 @@
-
 """Landlab Driver for running Landscape Evolution Experiments with
     - Soil weathering
     - Soil diffusion
     - Detachment-limited river erosion
     - tectonic uplift
     - vegetation modulation of erosion effects
-    - LPJGUESS i/o - functionality 
 
 Created by: Manuel Schmid, University of Tuebingen, 07.04.2017
 """
@@ -16,11 +14,14 @@ from landlab import RasterModelGrid
 from landlab import CLOSED_BOUNDARY, FIXED_VALUE_BOUNDARY
 from landlab.components.flow_routing import FlowRouter
 from landlab.components import ExponentialWeatherer
-from landlab.components import drainage_density
+from landlab.components import DepthDependentVegiDiffuser
 from landlab.components import LinearDiffuser
+from landlab.components import FastscapeEroder
 from landlab.components import Space
 from landlab.components import DepressionFinderAndRouter
+from landlab.components import drainage_density
 from landlab.components import SteepnessFinder
+from landlab.components import rainfallOscillation as ro
 from landlab import imshow_grid
 from landlab.components import landformClassifier
 from landlab.io.netcdf import write_netcdf
@@ -31,15 +32,18 @@ rcParams.update({'figure.autolayout': True})
 rcParams['agg.path.chunksize'] = 200000000
 import time
 #import the .py-inputfile
-#THIS NEEDS TO GO IN A LANDLAB-COMPONENT
 from inputFile import *
 from lpj_landlab_import import *
-from create_input_for_landlab import *
 
 #input-processing:
 #Number of total-timestep (nt) and spin-up timesteps (ssnt)
 nt = int(totalT / dt)
 ssnt = int(ssT / dt)
+ssntSF = int(sfT / dt)
+#time-vector (total and transient), used for plotting later
+timeVec = np.arange(0, totalT, dt)
+transTimeVec = np.arange(0, (totalT - ssT), dt)
+transientRainfallTimespan = int(totalT - ssT)
 #calculate the uplift per timestep
 uplift_per_step = upliftRate * dt
 #Number of total produced outputs
@@ -49,6 +53,7 @@ zp = len(str(int(no)))
 
 print("finished with parameter-initiation")
 print("---------------------")
+
 
 #---------------------------------Grid Setup-----------------------------------#
 #This initiates a Modelgrid with dimensions nrows x ncols and spatial scaling of dx
@@ -67,11 +72,9 @@ mg.add_zeros('node', 'topographic__elevation')
 mg.add_zeros('node', 'bedrock__elevation')
 mg.add_zeros('node', 'soil_production__rate')
 mg.add_zeros('node', 'soil__depth')
-mg.add_zeros('node', 'erosion__rate')
 mg.add_zeros('node', 'tpi__mask')
-mg.add_zeros('node', 'vegetation__density')
-mg.add_zeros('node', 'rainvalue')
-
+mg.add_zeros('node', 'erosion__rate')
+#mg.at_node['soil_production__rate'] = soilProductionRate
 #checks if standart topo is used. if not creates own
 if 'topoSeed' in locals():
     topo_tilt = mg.node_y/100000000 + mg.node_x/100000000
@@ -92,6 +95,8 @@ else:
 
 print('Creating soil layer under bedrock layer with {}m thickness'.format(initialSoilDepth))
 
+mg.add_zeros('node','vegetation__density')
+
 #Create boundary conditions of the model grid (eeither closed or fixed-head)
 for edge in (mg.nodes_at_left_edge,mg.nodes_at_right_edge,
         mg.nodes_at_top_edge, mg.nodes_at_bottom_edge):
@@ -99,9 +104,8 @@ for edge in (mg.nodes_at_left_edge,mg.nodes_at_right_edge,
 
 #Create one single outlet node
 mg.set_watershed_boundary_condition_outlet_id(0,mg['node']['topographic__elevation'],-9999)
-
 #create mask datafield which defaults to 1 to all core nodes and to 0 for
-#boundary nodes. LPJGUESS needs this
+#booundary nodes. LPJGUESS needs this
 mg.at_node['tpi__mask'][mg.core_nodes] = 1
 mg.at_node['tpi__mask'][mg.boundary_nodes] = 0
 
@@ -109,9 +113,20 @@ print("finished with setup of modelgrid")
 print("---------------------")
 
 ##---------------------------------Vegi implementation--------------------------#
-#run landform classifier once to create landform__ID
+##Set up a timeseries for vegetation-densities
+##This basically assumes that for a spin-up time (ssT) we have constant vegetation
+##cover (vp) and after that we get change vegetation cover as a sin-function
+vegiTimeseries  = np.zeros(int(totalT / dt)) + vp
 
-
+#This part sets the modification of the vegi-distribution. comment/uncomment
+#for usage
+#this modifies the vegiTimeseries array with a sinusoidal curve:
+#vegiDens = sinAmp * sin(sinB * timeVec) + vp
+sinB = (2*np.pi) / sinPeriod
+vegiTimeseries[ssnt:] =  sinAmp * np.sin(sinB * transTimeVec) + vp
+#this incorporates a vegi step-function at timestep sfT with amplitude sfA
+#vegiTimeseries[ssntSF:] = vp - sfA
+mg.at_node['vegetation__density'][:] = vp
 #This maps the vegetation density on the nodes to the links between the nodes
 vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 
@@ -120,6 +135,8 @@ vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 nSoil_to_15 = np.power(nSoil, 1.5)
 Ford = aqDens * grav * nSoil_to_15
 n_v_frac = nSoil + (nVRef * ((mg.at_node['vegetation__density'] / vRef)**w)) #self.vd = VARIABLE!
+#n_v_frac_to_w = np.power(n_v_frac, w)
+#Prefect = np.power(n_v_frac_to_w, 0.9)
 Prefect = np.power(n_v_frac, 0.9)
 Kv = k_sediment * Ford/Prefect
 
@@ -131,8 +148,28 @@ print("finished setting up the vegetation fields and Kdiff and Kriv")
 print("---------------------")
 
 ##---------------------------------Rain implementation--------------------------#
-#set 'rainvalue' to baseRainfall for spin-up
+##Set up a Timeseries of rainfall values
+#YOU NEED TO COMMENT/UNCOMMENT THE WHOLE SECTION IF YOU WANT TO SWITCH BETWEEN
+#STEP CHANGE RAINFALL AND OSCILLATING RAINFALL
+
+rainTimeseries = np.zeros(int(totalT / dt)) + baseRainfall
+#mg.add_zeros('node', 'water__unit_flux_in')
+#mg.at_node['water__unit_flux_in'][:] = int(baseRainfall)
+##----Step-change modification---#
+#rainTimeseries[ssntSF:] = baseRainfall - rfA 
+
+##----Oscillation Rainfall----#  
+#rainTimeseries[ssntSF:] = ro.createAsymWave(baseRainfall, 6, 0, sinPeriod,
+#        transientRainfallTimespan, dt)  
+
+mg.add_zeros('node', 'rainvalue')
 mg.at_node['rainvalue'][:] = int(baseRainfall)
+
+#load LPJ-Input
+#lfIDs, vegetationData = createVegiTimeseriesFromCsv('./input/egu18.s1_def_180ppm_lfid_fpc_100yr.csv')
+#recip = getMAPTimeseriesFromCSV('./input/egu18.s1_def_180ppm_lfid_prec_100yr.csv')
+#baseRainfall = precip[0] 
+
 
 ##---------------------------------Array initialization---------------------#
 ##This initializes all the arrays that are used to store data during the runtime
@@ -160,16 +197,14 @@ max_Ksn     = [] #max channel steepness
 ##---------------------------------Component initialization---------------------#
 
 
-fr = FlowRouter(mg,
-        runoff_rate = baseRainfall)
+fr = FlowRouter(mg, runoff_rate = baseRainfall)
 
 lm = DepressionFinderAndRouter(mg)
 
-ld = LinearDiffuser(mg,
-        linear_diffusivity = linDiff)
+ld = LinearDiffuser(mg, linear_diffusivity = linDiff)
 
-expWeath = ExponentialWeatherer(mg,
-        soil_production__maximum_rate = soilProductionRate)
+expWeath = ExponentialWeatherer(mg, soil_production__maximum_rate =
+        soilProductionRate, soil_production__decay_depth = 2)
 
 sf = SteepnessFinder(mg,
                     min_drainage_area = 1e6)
@@ -192,7 +227,6 @@ print("starting with main loop.")
 print("---------------------")
 #Create incremental counter for controlling progress of mainloop
 counter = 0
-
 #Create Limits for DHDT plot. Move this somewhere else later..
 DHDTLowLim = upliftRate - (upliftRate * 1)
 DHDTHighLim = upliftRate + (upliftRate * 1)
@@ -203,21 +237,13 @@ while elapsed_time < totalT:
     z0 = mg.at_node['topographic__elevation'].copy()
 
     #Call the erosion routines.
-    expWeath.calc_soil_prod_rate()
-    ld.run_one_step(dt = dt)
     fr.run_one_step()
     lm.map_depressions()
     floodedNodes = np.where(lm.flood_status==3)[0]
     sp.run_one_step(dt = dt, flooded_nodes = floodedNodes)
-    #sf.calculate_steepnesses()
-    lc.run_one_step(elevationStepBin , 300, classtype = classificationType)
-
-    #run importer once, just for testing
-    lpj_import_run_one_step(mg, lpj_output, method = 'cumulative')
-
-    #for bugfixing:
-    #print(np.max(mg.at_node['vegetation__density']))
-
+    ld.run_one_step(dt = dt)
+    expWeath.calc_soil_prod_rate()
+    lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
 
     #apply uplift
     mg.at_node['bedrock__elevation'][mg.core_nodes] += uplift_per_step
@@ -230,8 +256,8 @@ while elapsed_time < totalT:
             (mg.at_node['soil_production__rate'][:] * dt)
 
     #recalculate topographic elevation
-    mg.at_node['topographic__elevation'] = \
-            mg.at_node['bedrock__elevation'][:] + mg.at_node['soil__depth']
+    mg.at_node['topographic__elevation'][:] = \
+            mg.at_node['bedrock__elevation'][:] + mg.at_node['soil__depth'][:]
 
     #calculate drainage_density
     channel_mask = mg.at_node['drainage_area'] > critArea
@@ -262,7 +288,7 @@ while elapsed_time < totalT:
     #    mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, 0)
     #else:
     #    mg.at_node['vegetation__density'][:] = mapVegetationOnLandform(mg, vegetationData, lfIDs, counter)
-    #vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
+    vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 
     #update LinearDiffuser
     linDiff = linDiffBase*np.exp(-alphaDiff * vegiLinks)
@@ -273,12 +299,15 @@ while elapsed_time < totalT:
     n_v_frac = nSoil + (nVRef * (mg.at_node['vegetation__density'] / vRef)) #self.vd = VARIABLE!
     n_v_frac_to_w = np.power(n_v_frac, w)
     Prefect = np.power(n_v_frac_to_w, 0.9)
-    Kv = k_sediment * Ford/Prefect
-    sp.K_sed = Kv
+    Kvs = k_sediment * Ford/Prefect
+    Kvb = k_bedrock  * Ford/Prefect
+    sp.K_sed = Kvs
+    sp.K_bed = Kvb
+
 
     #update Rainfallvalues
     #if elapsed_time < spin_up:
-    #    rainValue = baseRainfall
+    #    rainValue = precip[0]
     #else:
     #    rainValue = precip[counter]
 
@@ -309,7 +338,7 @@ while elapsed_time < totalT:
     #mean_Ksn.append(np.mean(_ksndump[np.nonzero(_ksndump)]))
     #max_Ksn.append(np.max(_ksndump[np.nonzero(_ksndump)]))
 
-    #counter += 1
+    counter += 1
     #print(counter)
 
     #Run the output loop every outInt-times
@@ -345,7 +374,7 @@ while elapsed_time < totalT:
                                               'lgt.timestep' : elapsed_time,
                                               'lgt.classification' : classificationType,
                                               'lgt.elevation_step' : elevationStepBin})
-        ##Create erosion_diffmap
+        ##Create erosion_diffmaps
         plt.figure()
         imshow_grid(mg,erosionMatrix,grid_units=['m','m'],var_name='Erosion m/yr',cmap='jet',limits=[DHDTLowLim,DHDTHighLim])
         plt.savefig('./DHDT/eMap_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
@@ -366,3 +395,64 @@ while elapsed_time < totalT:
 tE = time.time()
 print()
 print('End of  Main Loop. So far it took {}s to get here. No worries homeboy...'.format(tE-t0))
+
+
+##---------------------------------Plotting-------------------------------------#
+
+
+#Plot Vegi_erosion_rate
+fig, axarr = plt.subplots(6, sharex = True, figsize = [11,14])
+axarr[0].plot(timeVec, vegiTimeseries,'g', linewidth = 2.5)
+axarr[0].set_title('Mean Surface Vegetation', fontsize = 12)
+axarr[0].set_ylabel('Vegetation cover')
+axarr[1].plot(timeVec, mean_elev, 'k', linewidth = 2.5)
+axarr[1].plot(timeVec, max_elev, 'k--', linewidth = 2, alpha = 0.5)
+axarr[1].plot(timeVec, min_elev, 'k--', linewidth = 2, alpha = 0.5)
+axarr[1].set_title('Mean Elevation', fontsize = 12)
+axarr[1].set_ylabel('Mean Elevation [m]')
+#axarr[1].set_ylim([0,80])
+axarr[2].plot(timeVec, np.degrees(np.arctan(mean_slope)), 'r', linewidth = 2.5)
+axarr[2].plot(timeVec, np.degrees(np.arctan(max_slope)), 'r--', linewidth = 2.0, alpha = 0.5)
+axarr[2].plot(timeVec, np.degrees(np.arctan(min_slope)), 'r--', linewidth = 2.0, alpha = 0.5)
+#axarr[2].set_ylim([0,10])
+axarr[2].set_title('Mean Slope', fontsize = 12)
+axarr[2].set_ylabel('Mean Slope [deg]')
+axarr[3].plot(timeVec,mean_dd, 'b', linewidth = 2.5)
+axarr[3].set_title('Mean Drainage Density')
+axarr[3].set_ylabel('Drainage Density')
+axarr[4].plot(timeVec, mean_hill_E, 'g--', linewidth = 2.0, alpha = 0.5)
+axarr[4].plot(timeVec, mean_riv_E, 'b--', linewidth = 2.0, alpha = 0.5)
+axarr[4].plot(timeVec, mean_E, 'r--', linewidth = 2.2, alpha = 0.8)
+axarr[4].legend(['Hillsl.', 'Rivers','Mean'])
+axarr[4].set_title("Erosion rates")
+axarr[4].set_ylabel('Erosion rate [m/yr]')
+axarr[5].plot(timeVec, rainTimeseries, 'k', linewidth = 2.5)
+axarr[5].set_title("Rainfall")
+axarr[5].set_ylabel("Rain Value")
+axarr[5].set_xlabel("Model Years", fontsize = 12)
+plt.savefig('./Multiplot_absolut.png',dpi = 720)
+plt.close()
+
+#Save the most useful output arrays as CSV file for later plotting
+np.savetxt('./CSVOutput/MeanSlope.csv', mean_slope)
+np.savetxt('./CSVOutput/MaxSlope.csv', max_slope)
+np.savetxt('./CSVOutput/MeanElev.csv', mean_elev)
+np.savetxt('./CSVOutput/MaxElev.csv', max_elev)
+np.savetxt('./CSVOutput/MeanRiverErosion.csv', mean_riv_E)
+np.savetxt('./CSVOutput/MeanHillslopeErosion.csv', mean_hill_E)
+np.savetxt('./CSVOutput/MeanErosion.csv', mean_E)
+np.savetxt('./CSVOutput/VegetationDensity.csv', vegiTimeseries)
+np.savetxt('./CSVOutput/Timeseries.csv', timeVec)
+np.savetxt('./CSVOutput/Vegi_bugfix.csv', vegi_P_mean)
+np.savetxt('./CSVOutput/MeanSoilthick.csv', mean_SD)
+np.savetxt('./CSVOutput/MeanRivK.csv', mean_K_riv)
+np.savetxt('./CSVOutput/MeanHillK.csv', mean_K_diff)
+#np.savetxt('./CSVOutput/MeanKsn.csv', mean_Ksn)
+#np.savetxt('./CSVOutput/MaxKsn.csv', max_Ksn)
+np.savetxt('./CSVOutput/RainTimeseries.csv', rainTimeseries)
+
+#bugfixing because manu is a fucking dumb asshole
+plt.plot(vegi_P_mean)
+plt.savefig('./vegi_P_bugfix.png', dpi = 720)
+plt.close()
+print("FINALLY! TADA! IT IS DONE! LOOK AT ALL THE OUTPUT I MADE!!!!")
