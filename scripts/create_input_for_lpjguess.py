@@ -109,14 +109,12 @@ def derive_base_info(ll_inpath):
             
             valid_files.append(file)
         else:
-            print(f"File {file} does not conform to the format convention.")
-            print("Check global attributes")
-            continue
+            log.warn(f"File {file} does not conform to the format convention. Check global attributes.")
     
     if len(set(classifications)) != 1 or len(set(ele_steps)) != 1:
-        log.warn("Classification attributes differ. Check files.")
-        log.warn(classifications)
-        log.warn(ele_steps)            
+        log.error("Classification attributes differ. Check files.")
+        log.error(f"classification: {classifications}")
+        log.error(f"ele_steps: {ele_steps}")            
         exit(-1)
         
     return (classifications[0].upper(), ele_steps[0], valid_files, coordinates)
@@ -137,6 +135,11 @@ def extract_variables_from_landlab_ouput(ll_file):
               }
 
     ds_ll = xr.open_dataset(ll_file)
+
+    for map in mapper:
+        if map not in ds_ll.data_vars:
+            log.error(f'DataArray {map} missing in LandLab file {ll_file}.')
+            exit(-1)
 
     # copy data arrays to new file, squeeze, and rename with mapper
     ds = ds_ll.squeeze()[list(mapper.keys())].rename(mapper)
