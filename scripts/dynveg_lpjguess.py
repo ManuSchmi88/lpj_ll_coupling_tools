@@ -18,8 +18,9 @@ logPath = '.'
 fileName = 'dynveg_lpjguess'
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+    level=logging.INFO,
+    format = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s",
+    #format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
     handlers=[
         logging.FileHandler("{0}/{1}.log".format(logPath, fileName)),
         logging.StreamHandler()
