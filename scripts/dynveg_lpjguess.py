@@ -6,15 +6,19 @@ import os
 import xarray as xr
 import shutil
 import sys
+import time
 from tqdm import tqdm
 from typing import List, Optional
 
+LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
+LPJGUESS_TEMPLATE_PATH = os.environ.get('LPJGUESS_TEMPLATE_PATH', 'lpjguess.template')
+LPJGUESS_FORCINGS_PATH = os.environ.get('LPJGUESS_FORCINGS_PATH', 'forcings')
 
 logPath = '.'
 fileName = 'dynveg_lpjguess'
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
     handlers=[
         logging.FileHandler("{0}/{1}.log".format(logPath, fileName)),
@@ -34,10 +38,14 @@ def split_climate(ds_files:List[str],
                   dest_path:Optional[str]=None, 
                   time_step:TS=TS.MONTHLY) -> None:
     """Split climte files into dt-length chunks"""
+    log.debug('ds_path: %s' % ds_path)
+    log.debug('dest_path: %s' % dest_path)
+    log.debug(ds_files)
 
     for ds_file in ds_files:
         fpath = os.path.join(ds_path, ds_file) if ds_path else ds_file
- 
+        log.debug(fpath)
+
         with xr.open_dataset(fpath, decode_times=False) as ds:
             n_episodes = len(ds.time) // (dt*12)
             log.debug('Number of climate episodes: %d' % n_episodes)
@@ -49,27 +57,33 @@ def split_climate(ds_files:List[str],
             log.info('Splitting file %s' % ds_file)
             for g_cnt, ds_grp in tqdm(ds.groupby(ds.grouper)):
                 del ds_grp['grouper']
-                ds_grp.to_netcdf('%s_%s.nc' % (fpath.replace('.nc',''), str(g_cnt).zfill(6)), format='NETCDF4_CLASSIC')
+                foutname = os.path.basename(fpath.replace('.nc',''))
+                foutname = os.path.join(dest_path, '%s_%s.nc' % (foutname, str(g_cnt).zfill(6)))
+                ds_grp.to_netcdf(foutname, format='NETCDF4_CLASSIC')
             
 def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
-    SOURCE = 'default_sources'
-
-    if os.path.isdir(dest): shutil.rmtree(dest)
+    log.debug('dest: %s' % dest)
+    if os.path.isdir(dest):
+        log.warn('destination folder exists... removing in 3 sec')
+        time.sleep(3)
+        shutil.rmtree(dest)
     if source:
         shutil.copytree(source, dest)        
     else:
-        shutil.copytree(SOURCE, dest)
+        shutil.copytree(LPJGUESS_TEMPLATE_PATH, dest)
     os.makedirs(os.path.join(dest, 'lfdata'), exist_ok=True)
     os.makedirs(os.path.join(dest, 'climdata'), exist_ok=True)
 
 def prepare_input(dest:str) -> None:
-
+    log.debug('dest: %s' % dest)
     prepare_filestructure(dest)
 
     # move this to a config or make it smarter
     vars = ['prec', 'temp', 'rad']
     ds_files = ['egu2018_%s_35ka_def_landid.nc' % v for v in vars]
-    split_climate(ds_files, dt=100, ds_path='../forcings/climdata', dest_path=dest, time_step=TS.MONTHLY)
+    split_climate(ds_files, dt=100, ds_path=os.path.join(LPJGUESS_FORCINGS_PATH, 'climdata'),
+                                    dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'climdata'), 
+                                    time_step=TS.MONTHLY)
 
 
 class DynVeg_LpjGuess(Component):
@@ -95,7 +109,8 @@ class DynVeg_LpjGuess(Component):
 
 
 def test_dynveg_contructor():
-    c = DynVeg_LpjGuess('../lpjguess/input2')
+
+    c = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH)
     print(c.spinup)
     print(c)
 
