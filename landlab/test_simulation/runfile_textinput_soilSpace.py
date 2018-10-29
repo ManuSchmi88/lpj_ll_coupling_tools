@@ -38,8 +38,6 @@ from lpj_landlab_import import *
 #input-processing:
 #Number of total-timestep (nt) and spin-up timesteps (ssnt)
 nt = int(totalT / dt)
-ssnt = int(ssT / dt)
-ssntSF = int(sfT / dt)
 #time-vector (total and transient), used for plotting later
 timeVec = np.arange(0, totalT, dt)
 transTimeVec = np.arange(0, (totalT - ssT), dt)
@@ -114,18 +112,10 @@ print("---------------------")
 
 ##---------------------------------Vegi implementation--------------------------#
 ##Set up a timeseries for vegetation-densities
-##This basically assumes that for a spin-up time (ssT) we have constant vegetation
-##cover (vp) and after that we get change vegetation cover as a sin-function
 vegiTimeseries  = np.zeros(int(totalT / dt)) + vp
-
-#This part sets the modification of the vegi-distribution. comment/uncomment
-#for usage
-#this modifies the vegiTimeseries array with a sinusoidal curve:
-#vegiDens = sinAmp * sin(sinB * timeVec) + vp
 sinB = (2*np.pi) / sinPeriod
 vegiTimeseries[ssnt:] =  sinAmp * np.sin(sinB * transTimeVec) + vp
 #this incorporates a vegi step-function at timestep sfT with amplitude sfA
-#vegiTimeseries[ssntSF:] = vp - sfA
 mg.at_node['vegetation__density'][:] = vp
 #This maps the vegetation density on the nodes to the links between the nodes
 vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
@@ -135,8 +125,6 @@ vegiLinks = mg.map_mean_of_link_nodes_to_link('vegetation__density')
 nSoil_to_15 = np.power(nSoil, 1.5)
 Ford = aqDens * grav * nSoil_to_15
 n_v_frac = nSoil + (nVRef * ((mg.at_node['vegetation__density'] / vRef)**w)) #self.vd = VARIABLE!
-#n_v_frac_to_w = np.power(n_v_frac, w)
-#Prefect = np.power(n_v_frac_to_w, 0.9)
 Prefect = np.power(n_v_frac, 0.9)
 Kv = k_sediment * Ford/Prefect
 
@@ -149,26 +137,9 @@ print("---------------------")
 
 ##---------------------------------Rain implementation--------------------------#
 ##Set up a Timeseries of rainfall values
-#YOU NEED TO COMMENT/UNCOMMENT THE WHOLE SECTION IF YOU WANT TO SWITCH BETWEEN
-#STEP CHANGE RAINFALL AND OSCILLATING RAINFALL
-
 rainTimeseries = np.zeros(int(totalT / dt)) + baseRainfall
-#mg.add_zeros('node', 'water__unit_flux_in')
-#mg.at_node['water__unit_flux_in'][:] = int(baseRainfall)
-##----Step-change modification---#
-#rainTimeseries[ssntSF:] = baseRainfall - rfA 
-
-##----Oscillation Rainfall----#  
-#rainTimeseries[ssntSF:] = ro.createAsymWave(baseRainfall, 6, 0, sinPeriod,
-#        transientRainfallTimespan, dt)  
-
 mg.add_zeros('node', 'rainvalue')
 mg.at_node['rainvalue'][:] = int(baseRainfall)
-
-#load LPJ-Input
-#lfIDs, vegetationData = createVegiTimeseriesFromCsv('./input/egu18.s1_def_180ppm_lfid_fpc_100yr.csv')
-#recip = getMAPTimeseriesFromCSV('./input/egu18.s1_def_180ppm_lfid_prec_100yr.csv')
-#baseRainfall = precip[0] 
 
 
 ##---------------------------------Array initialization---------------------#
