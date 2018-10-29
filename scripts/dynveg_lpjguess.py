@@ -1,8 +1,10 @@
 from enum import Enum
 from landlab import Component
 import logging
+import os
 import xarray as xr
 import sys
+from typing import Optional
 
 logPath = '.'
 fileName = 'dynveg_lpjguess.log'
@@ -22,12 +24,22 @@ class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
-def split_climate(ds_files, dt:int, time_step:TS=TS.MONTHLY):
+def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.MONTHLY):
     """Split climte files into dt-length chunks"""
     for ds_file in ds_files:
-        ds = xr.open_dataset(ds_file, decode_times=False)
+        if ds_path:
+            fpath = os.path.join(ds_path, ds_file)
+        else:
+            fpath = ds_file
+        with xr.open_dataset(fpath, decode_times=False) as ds:
+            print(ds)
 
         # do something
+
+def prepare_input():
+    vars = ['prec', 'temp', 'rad']
+    ds_files = ['egu2018_%s_35ka_def_landid.nc' % v for v in vars]
+    split_climate(ds_files, dt=100, ds_path='../forcings/climdata', time_step=TS.MONTHLY)
 
 
 class DynVeg_LpjGuess(Component):
@@ -45,6 +57,7 @@ class DynVeg_LpjGuess(Component):
         self._spinup = spinup
         self._current_timestep = 0
 
+        prepare_input()
 
     def run_one_step(self) -> None:
         pass
