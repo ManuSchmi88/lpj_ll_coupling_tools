@@ -5,7 +5,10 @@ import numpy as np
 import os
 import xarray as xr
 import sys
+from tqdm import tqdm
 from typing import Optional
+
+
 
 logPath = '.'
 fileName = 'dynveg_lpjguess.log'
@@ -25,23 +28,27 @@ class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
-def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.MONTHLY):
+def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.MONTHLY) -> None:
     """Split climte files into dt-length chunks"""
+
     for ds_file in ds_files:
-        if ds_path:
-            fpath = os.path.join(ds_path, ds_file)
-        else:
-            fpath = ds_file
+        fpath = os.path.join(ds_path, ds_file) if ds_path else ds_file
+ 
         with xr.open_dataset(fpath, decode_times=False) as ds:
-            n_episodes = len(ds.time) // dt*12
-            log.info(n_episodes)
+            n_episodes = len(ds.time) // (dt*12)
+            log.debug('Number of climate episodes: %d' % n_episodes)
             if time_step == TS.MONTHLY:
                 episode = np.repeat(list(range(n_episodes)), dt*12)
-                log.info(episode)
+            else:
+                episode = np.repeat(list(range(n_episodes)), dt*365)
+            ds['grouper'] = xr.DataArray(episode, coords=[('time', ds.time.values)])
+            log.info('Splitting file %s' % ds_file)
+            for g_cnt, ds_grp in tqdm(ds.groupby(ds.grouper)):
+                del ds_grp['grouper']
+                ds_grp.to_netcdf('%s_%s.nc' % (fpath.replace('.nc',''), str(g_cnt).zfill(6)), format='NETCDF4_CLASSIC')
+            
 
-        # do something
-
-def prepare_input():
+def prepare_input() -> None:
     vars = ['prec', 'temp', 'rad']
     ds_files = ['egu2018_%s_35ka_def_landid.nc' % v for v in vars]
     split_climate(ds_files, dt=100, ds_path='../forcings/climdata', time_step=TS.MONTHLY)
