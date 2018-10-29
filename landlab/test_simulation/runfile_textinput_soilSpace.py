@@ -72,7 +72,6 @@ mg.add_zeros('node', 'soil_production__rate')
 mg.add_zeros('node', 'soil__depth')
 mg.add_zeros('node', 'tpi__mask')
 mg.add_zeros('node', 'erosion__rate')
-#mg.at_node['soil_production__rate'] = soilProductionRate
 #checks if standart topo is used. if not creates own
 if 'topoSeed' in locals():
     topo_tilt = mg.node_y/100000000 + mg.node_x/100000000
