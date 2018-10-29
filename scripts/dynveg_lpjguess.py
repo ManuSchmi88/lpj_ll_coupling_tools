@@ -4,14 +4,14 @@ import logging
 import numpy as np
 import os
 import xarray as xr
+import shutil
 import sys
 from tqdm import tqdm
-from typing import Optional
-
+from typing import List, Optional
 
 
 logPath = '.'
-fileName = 'dynveg_lpjguess.log'
+fileName = 'dynveg_lpjguess'
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +28,11 @@ class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
-def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.MONTHLY) -> None:
+def split_climate(ds_files:List[str], 
+                  dt:int, 
+                  ds_path:Optional[str]=None, 
+                  dest_path:Optional[str]=None, 
+                  time_step:TS=TS.MONTHLY) -> None:
     """Split climte files into dt-length chunks"""
 
     for ds_file in ds_files:
@@ -47,11 +51,25 @@ def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.
                 del ds_grp['grouper']
                 ds_grp.to_netcdf('%s_%s.nc' % (fpath.replace('.nc',''), str(g_cnt).zfill(6)), format='NETCDF4_CLASSIC')
             
+def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
+    SOURCE = 'default_sources'
 
-def prepare_input() -> None:
+    if os.path.isdir(dest): shutil.rmtree(dest)
+    if source:
+        shutil.copytree(source, dest)        
+    else:
+        shutil.copytree(SOURCE, dest)
+    os.makedirs(os.path.join(dest, 'lfdata'), exist_ok=True)
+    os.makedirs(os.path.join(dest, 'climdata'), exist_ok=True)
+
+def prepare_input(dest:str) -> None:
+
+    prepare_filestructure(dest)
+
+    # move this to a config or make it smarter
     vars = ['prec', 'temp', 'rad']
     ds_files = ['egu2018_%s_35ka_def_landid.nc' % v for v in vars]
-    split_climate(ds_files, dt=100, ds_path='../forcings/climdata', time_step=TS.MONTHLY)
+    split_climate(ds_files, dt=100, ds_path='../forcings/climdata', dest_path=dest, time_step=TS.MONTHLY)
 
 
 class DynVeg_LpjGuess(Component):
@@ -65,11 +83,11 @@ class DynVeg_LpjGuess(Component):
     def timestep(self):
         return self._current_timestep
 
-    def __init__(self, spinup:bool = False):
+    def __init__(self, dest:str, spinup:bool = False):
         self._spinup = spinup
         self._current_timestep = 0
 
-        prepare_input()
+        prepare_input(dest)
 
     def run_one_step(self) -> None:
         pass
@@ -77,7 +95,7 @@ class DynVeg_LpjGuess(Component):
 
 
 def test_dynveg_contructor():
-    c = DynVeg_LpjGuess()
+    c = DynVeg_LpjGuess('../lpjguess/input2')
     print(c.spinup)
     print(c)
 
