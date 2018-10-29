@@ -33,6 +33,12 @@ from lpjguesstools.lgt_createinput import _xr_tile
 from lpjguesstools.lgt_createinput import _xr_geo
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+log.addHandler(ch)
 
 class Bunch(object):
     """Simple data storage class."""
@@ -108,9 +114,9 @@ def derive_base_info(ll_inpath):
             continue
     
     if len(set(classifications)) != 1 or len(set(ele_steps)) != 1:
-        print("Classification attributes differ. Check files.")
-        print(classifications)
-        print(ele_steps)            
+        log.warn("Classification attributes differ. Check files.")
+        log.warn(classifications)
+        log.warn(ele_steps)            
         exit(-1)
         
     return (classifications[0].upper(), ele_steps[0], valid_files, coordinates)
@@ -153,9 +159,16 @@ def main():
     SOIL_NC = get_data_location("lpjguesstools", "data/"+SOIL_NC)
     ELEVATION_NC = get_data_location("lpjguesstools", "data/"+ELEVATION_NC)
 
+
+
     # get path info for in- and output
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
     LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
+
+    log.debug(f'SOIL_NC: {SOIL_NC}')
+    log.debug(f'ELEV_NC: {ELEVATION_NC}')
+    log.debug(f'LL_PATH: {LANDLAB_OUTPUT_PATH}')
+    log.debug(f'LPJ_PATH: {LPJGUESS_INPUT_PATH}')
 
     classification, ele_step, landlab_files, list_coords = derive_base_info(LANDLAB_OUTPUT_PATH)
 
