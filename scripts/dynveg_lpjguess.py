@@ -1,6 +1,7 @@
 from enum import Enum
 from landlab import Component
 import logging
+import numpy as np
 import os
 import xarray as xr
 import sys
@@ -32,7 +33,11 @@ def split_climate(ds_files, dt:int, ds_path:Optional[str]=None, time_step:TS=TS.
         else:
             fpath = ds_file
         with xr.open_dataset(fpath, decode_times=False) as ds:
-            print(ds)
+            n_episodes = len(ds.time) // dt*12
+            log.info(n_episodes)
+            if time_step == TS.MONTHLY:
+                episode = np.repeat(list(range(n_episodes)), dt*12)
+                log.info(episode)
 
         # do something
 
