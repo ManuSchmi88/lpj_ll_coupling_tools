@@ -107,23 +107,23 @@ def lpj_import_run_one_step(grid, inputFile, method = 'cumulative'):
 
     elif method == 'individual':
         #add individual landlab fields to the grid if they don't exist
-        if all(fpc in grid.keys() for fpc in ('grass_fpc', 'tree_fpc',
+        if all(fpc in grid.keys('node') for fpc in ('grass_fpc', 'tree_fpc',
             'shrub_fpc')):
             #no need to initalize something. just do nothing
             pass
         else:
-            grid.add_zeros('grass_fpc')
-            grid.add_zeros('tree_fpc')
-            grid.add_zeros('shrub_fpc')
+            grid.add_zeros('node', 'grass_fpc')
+            grid.add_zeros('node', 'tree_fpc')
+            grid.add_zeros('node', 'shrub_fpc')
 
         grass_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'grass')
         tree_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'tree')
         shrub_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'shrub')
 
         #map values to individual fiels
-        mg.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
-        mg.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
-        mg.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
+        grid.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
+        grid.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
+        grid.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
 
     else: 
         raise NotImplementedError

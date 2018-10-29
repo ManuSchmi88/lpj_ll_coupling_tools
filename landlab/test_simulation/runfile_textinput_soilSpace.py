@@ -26,6 +26,7 @@ from landlab import imshow_grid
 from landlab.components import landformClassifier
 from landlab.io.netcdf import write_netcdf
 from landlab.io.netcdf import read_netcdf
+from create_input_for_landlab import lpj_import_run_one_step 
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
@@ -33,7 +34,7 @@ rcParams['agg.path.chunksize'] = 200000000
 import time
 #import the .py-inputfile
 from inputFile import *
-from lpj_landlab_import import *
+#from lpj_landlab_import import *
 
 #input-processing:
 #Number of total-timestep (nt) and spin-up timesteps (ssnt)
@@ -112,8 +113,6 @@ print("---------------------")
 ##---------------------------------Vegi implementation--------------------------#
 ##Set up a timeseries for vegetation-densities
 vegiTimeseries  = np.zeros(int(totalT / dt)) + vp
-sinB = (2*np.pi) / sinPeriod
-vegiTimeseries[ssnt:] =  sinAmp * np.sin(sinB * transTimeVec) + vp
 #this incorporates a vegi step-function at timestep sfT with amplitude sfA
 mg.at_node['vegetation__density'][:] = vp
 #This maps the vegetation density on the nodes to the links between the nodes
@@ -214,12 +213,13 @@ while elapsed_time < totalT:
     ld.run_one_step(dt = dt)
     expWeath.calc_soil_prod_rate()
     lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
-
+    lpj_import_run_one_step(mg, '../input/sp_lai.out', method = 'individual')
     #apply uplift
     mg.at_node['bedrock__elevation'][mg.core_nodes] += uplift_per_step
 
     #set soil-depth to zero at outlet node
-    mg.at_node['soil__depth'][0] = 0
+    #TODO: try disabling this to get non-zero soil depth?
+    #mg.at_node['soil__depth'][0] = 0
     
     #add newly weathered soil
     mg.at_node['soil__depth'][:] += \
