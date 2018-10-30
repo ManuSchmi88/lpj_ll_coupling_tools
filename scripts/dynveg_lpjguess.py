@@ -35,6 +35,10 @@ class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
+def execute_lpjguess(dest:str) -> None:
+    '''Run LPJ-Guess for one time-step'''
+    log.info('RUN LPJ-GUESS')
+
 def fill_template(template: str, data: Dict[str, str]) -> str:
     """Fill template file with specific data from dict"""
     with open( template, 'rU' ) as f:
@@ -94,9 +98,9 @@ def prepare_input(dest:str) -> None:
                                     dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'climdata'), 
                                     time_step=TS.MONTHLY)
 
-    # ---
-    # fill template files with per run data:
-    #
+def prepare_runfiles(dest:str, dt:int) -> None:
+    """Prepare files specific to this dt run"""
+    # fill template files with per-run data:
     run_data = {# climate data
                 'CLIMPREC': 'sample_run_clim_prec_00000.nc',
                 'CLIMWET':  'sample_run_clim_prec_00000.nc',
@@ -128,12 +132,12 @@ class DynVeg_LpjGuess(Component):
     def __init__(self, dest:str, spinup:bool = False):
         self._spinup = spinup
         self._current_timestep = 0
-
-        prepare_input(dest)
+        self._dest = dest
+        prepare_input(self._dest)
 
     def run_one_step(self) -> None:
-        pass
-
+        prepare_runfiles(self._dest, self._current_timestep)
+        execute_lpjguess(self._dest)
 
 
 def test_dynveg_contructor():
