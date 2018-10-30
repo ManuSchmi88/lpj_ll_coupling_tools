@@ -5,14 +5,16 @@ import numpy as np
 import os
 import xarray as xr
 import shutil
+from string import Template
 import sys
 import time
 from tqdm import tqdm
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
 LPJGUESS_TEMPLATE_PATH = os.environ.get('LPJGUESS_TEMPLATE_PATH', 'lpjguess.template')
 LPJGUESS_FORCINGS_PATH = os.environ.get('LPJGUESS_FORCINGS_PATH', 'forcings')
+LPJGUESS_INS_FILE_TPL = os.environ.get('LPJGUESS_INS_FILE_TPL', 'lpjguess.ins.tpl')
 
 logPath = '.'
 fileName = 'dynveg_lpjguess'
@@ -32,6 +34,12 @@ log = logging.getLogger()
 class TS(Enum):
     DAILY = 1
     MONTHLY = 2
+
+def fill_template(template: str, data: Dict[str, str]) -> str:
+    """Fill template file with specific data from dict"""
+    with open( template, 'rU' ) as f:
+        src = Template( f.read() )
+    return src.substitute(data)
 
 def split_climate(ds_files:List[str], 
                   dt:int, 
@@ -86,6 +94,25 @@ def prepare_input(dest:str) -> None:
                                     dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'climdata'), 
                                     time_step=TS.MONTHLY)
 
+    # ---
+    # fill template files with per run data:
+    #
+    run_data = {# climate data
+                'CLIMPREC': 'sample_run_clim_prec_00000.nc',
+                'CLIMWET':  'sample_run_clim_prec_00000.nc',
+                'CLIMRAD':  'sample_run_clim_rad_00000.nc',
+                'CLIMTEMP': 'sample_run_clim_temp_00000.nc',
+                # landform files
+                'LFDATA': 'lf_data.nc',
+                'SITEDATA': 'site_data.nc',
+                # setup data
+                'GRIDLIST': 'gridlist.txt',
+                'NYEARSPINUP': '500',
+                'RESTART': '0'
+                }
+
+    insfile = fill_template( os.path.join(dest, LPJGUESS_INS_FILE_TPL), run_data )
+    open(os.path.join(dest, 'lpjguess.ins'), 'w').write(insfile)
 
 class DynVeg_LpjGuess(Component):
     """classify a DEM in different landform, according to slope, elevation and aspect"""
