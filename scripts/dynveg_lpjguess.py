@@ -20,7 +20,7 @@ logPath = '.'
 fileName = 'dynveg_lpjguess'
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s",
     #format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
     handlers=[
@@ -41,6 +41,7 @@ def execute_lpjguess(dest:str) -> None:
 
 def fill_template(template: str, data: Dict[str, str]) -> str:
     """Fill template file with specific data from dict"""
+    log.debug('Fill LPJ-GUESS ins template')
     with open( template, 'rU' ) as f:
         src = Template( f.read() )
     return src.substitute(data)
@@ -75,9 +76,10 @@ def split_climate(ds_files:List[str],
                 ds_grp.to_netcdf(foutname, format='NETCDF4_CLASSIC')
             
 def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
-    log.debug('dest: %s' % dest)
+    log.debug('Prepare file structure')
+    log.debug('Dest: %s' % dest)
     if os.path.isdir(dest):
-        log.warn('destination folder exists... removing in 3 sec')
+        log.warn('Destination folder exists... removing in 3 sec')
         time.sleep(3)
         shutil.rmtree(dest)
     if source:
@@ -88,6 +90,7 @@ def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
     os.makedirs(os.path.join(dest, 'climdata'), exist_ok=True)
 
 def prepare_input(dest:str) -> None:
+    log.debug('Prepare input')
     log.debug('dest: %s' % dest)
     prepare_filestructure(dest)
 
@@ -101,18 +104,20 @@ def prepare_input(dest:str) -> None:
 def prepare_runfiles(dest:str, dt:int) -> None:
     """Prepare files specific to this dt run"""
     # fill template files with per-run data:
+    restart = '0' if dt == 0 else '1'
+
     run_data = {# climate data
-                'CLIMPREC': 'sample_run_clim_prec_00000.nc',
-                'CLIMWET':  'sample_run_clim_prec_00000.nc',
-                'CLIMRAD':  'sample_run_clim_rad_00000.nc',
-                'CLIMTEMP': 'sample_run_clim_temp_00000.nc',
+                'CLIMPREC': 'egu2018_prec_35ka_def_landid_%s.nc' % str(dt).zfill(6),
+                'CLIMWET':  'egu2018_prec_35ka_def_landid_%s.nc' % str(dt).zfill(6),
+                'CLIMRAD':  'egu2018_rad_35ka_def_landid_%s.nc' % str(dt).zfill(6),
+                'CLIMTEMP': 'egu2018_temp_35ka_def_landid_%s.nc' % str(dt).zfill(6),
                 # landform files
-                'LFDATA': 'lf_data.nc',
-                'SITEDATA': 'site_data.nc',
+                'LFDATA': 'lpj2ll_landform_data.nc',
+                'SITEDATA': 'lpj2ll_site_data.nc',
                 # setup data
                 'GRIDLIST': 'gridlist.txt',
                 'NYEARSPINUP': '500',
-                'RESTART': '0'
+                'RESTART': restart
                 }
 
     insfile = fill_template( os.path.join(dest, LPJGUESS_INS_FILE_TPL), run_data )
@@ -138,6 +143,7 @@ class DynVeg_LpjGuess(Component):
     def run_one_step(self) -> None:
         prepare_runfiles(self._dest, self._current_timestep)
         execute_lpjguess(self._dest)
+        self._current_timestep += 1
 
 
 def test_dynveg_contructor():
@@ -145,6 +151,9 @@ def test_dynveg_contructor():
     c = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH)
     print(c.spinup)
     print(c)
+
+    for i in range(3):
+        c.run_one_step()
 
 if __name__ == '__main__':
     log.info('Starting dynveg lpjguess component')
