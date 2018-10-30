@@ -31,19 +31,19 @@ outputdirectory "./output/"
 !
 ! Atmospheric CO2 content (ppmv)
 ! (used only by guessio.cpp)
-param "file_co2"      (str "../forcings/climdata/co2_TraCE_egu2018_35ka_const180ppm.txt")
+param "file_co2"      (str "input/climdata/co2_TraCE_egu2018_35ka_const180ppm.txt")
 
 ! N deposition (blank string to use constant pre-industrial level of 2 kgN/ha/year)
-param "file_temp"     (str "../forcings/climdata/$CLIMTEMP")
+param "file_temp"     (str "input/climdata/$CLIMTEMP")
 param "variable_temp" (str "temp")
 
-param "file_prec"     (str "../forcings/climdata/$CLIMPREC")
+param "file_prec"     (str "input/climdata/$CLIMPREC")
 param "variable_prec" (str "prec")
 
-param "file_wetdays"  (str "../forcings/climdata/$CLIMWET") 
+param "file_wetdays"  (str "input/climdata/$CLIMWET") 
 param "variable_wetdays" (str "wet")
 
-param "file_insol"      (str "../forcings/climdata/$CLIMRAD") 
+param "file_insol"      (str "input/climdata/$CLIMRAD") 
 param "variable_insol"  (str "rad")
 
 param "file_min_temp"      (str "")

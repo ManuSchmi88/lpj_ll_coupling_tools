@@ -16,6 +16,7 @@ import numpy as np
 import glob
 import os
 import sys
+from typing import List, Tuple
 
 import pandas as pd
 import xarray as xr
@@ -82,7 +83,7 @@ def derive_region(coords):
     return [min_lon, min_lat, max_lon, max_lat]
 
 
-def derive_base_info(ll_inpath):
+def derive_base_info(ll_inpath: str) -> Tuple[str, int, List[str], List[Tuple[float, float]]]:
     """Derive the locations and landform classification
     mode from the landlab grid files"""
 
@@ -166,7 +167,7 @@ def main():
 
     # get path info for in- and output
     LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
-    LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
+    LPJGUESS_INPUT_PATH = os.path.join(os.environ.get('LPJGUESS_INPUT_PATH', 'run'), 'input', 'lfdata')
 
     log.debug(f'SOIL_NC: {SOIL_NC}')
     log.debug(f'ELEV_NC: {ELEVATION_NC}')

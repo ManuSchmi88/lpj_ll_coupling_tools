@@ -1,4 +1,5 @@
 from enum import Enum
+import glob
 from landlab import Component
 import logging
 import numpy as np
@@ -6,16 +7,24 @@ import os
 import xarray as xr
 import shutil
 from string import Template
+import subprocess
 import sys
 import time
 from tqdm import tqdm
 from typing import Dict, List, Optional
 
-LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'lpjguess/input')
+from create_input_for_lpjguess import main as create_input_main
+
+# define consts - source environemt.sh
+LPJGUESS_INPUT_PATH = os.environ.get('LPJGUESS_INPUT_PATH', 'run')
 LPJGUESS_TEMPLATE_PATH = os.environ.get('LPJGUESS_TEMPLATE_PATH', 'lpjguess.template')
 LPJGUESS_FORCINGS_PATH = os.environ.get('LPJGUESS_FORCINGS_PATH', 'forcings')
 LPJGUESS_INS_FILE_TPL = os.environ.get('LPJGUESS_INS_FILE_TPL', 'lpjguess.ins.tpl')
+LPJGUESS_BIN = os.environ.get('LPJGUESS_BIN', 'guess')
+LPJGUESS_CO2FILE = os.environ.get('LPJGUESS_CO2FILE', 'co2.txt') 
 
+
+# logging setup
 logPath = '.'
 fileName = 'dynveg_lpjguess'
 
@@ -35,9 +44,33 @@ class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
+def add_time_attrs(ds, calendar_year=0):
+    ds['time'].attrs['units'] = "days since 1-1-15 00:00:00" ;
+    ds['time'].attrs['axis'] = "T" ;
+    ds['time'].attrs['long_name'] = "time" ;
+    ds['time'].attrs['standard_name'] = "time" ;
+    ds['time'].attrs['calendar'] = "%d yr B.P." % calendar_year
+
+
+def generate_landform_files(dest:str) -> None:
+    log.info('Convert landlab netcdf data to lfdata fromat')
+    create_input_main()
+
+
 def execute_lpjguess(dest:str) -> None:
     '''Run LPJ-Guess for one time-step'''
-    log.info('RUN LPJ-GUESS')
+    log.info('Execute LPJ-Guess run')
+
+    p = subprocess.Popen([LPJGUESS_BIN, '-input', 'sp', 'lpjguess.ins'], cwd=dest)
+    p.wait()
+
+def move_state(dest:str) -> None:
+    '''Move state dumpm files into loaddir for next timestep'''
+    log.info('Move state to loaddir')
+    state_files = glob.glob(os.path.join(dest, 'dumpdir_eor/*'))
+    for state_file in state_files:
+        shutil.copy(state_file, os.path.join(dest, 'loaddir'))
+
 
 def fill_template(template: str, data: Dict[str, str]) -> str:
     """Fill template file with specific data from dict"""
@@ -69,11 +102,26 @@ def split_climate(ds_files:List[str],
                 episode = np.repeat(list(range(n_episodes)), dt*365)
             ds['grouper'] = xr.DataArray(episode, coords=[('time', ds.time.values)])
             log.info('Splitting file %s' % ds_file)
+
             for g_cnt, ds_grp in tqdm(ds.groupby(ds.grouper)):
                 del ds_grp['grouper']
+
+                # modify time coord
+                # us first dt years data
+                if g_cnt == 0:
+                    time_ = ds_grp['time'][:dt*12]
+
+                add_time_attrs(ds, calendar_year=22_000)
                 foutname = os.path.basename(fpath.replace('.nc',''))
                 foutname = os.path.join(dest_path, '%s_%s.nc' % (foutname, str(g_cnt).zfill(6)))
                 ds_grp.to_netcdf(foutname, format='NETCDF4_CLASSIC')
+        
+    # copy co2 file
+    src = os.path.join(ds_path, LPJGUESS_CO2FILE) if ds_path else LPJGUESS_CO2FILE
+    log.debug('co2_path: %s' % ds_path) 
+    shutil.copyfile(src, os.path.join(dest_path, LPJGUESS_CO2FILE))
+            
+
             
 def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
     log.debug('Prepare file structure')
@@ -86,19 +134,22 @@ def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
         shutil.copytree(source, dest)        
     else:
         shutil.copytree(LPJGUESS_TEMPLATE_PATH, dest)
-    os.makedirs(os.path.join(dest, 'lfdata'), exist_ok=True)
-    os.makedirs(os.path.join(dest, 'climdata'), exist_ok=True)
+    os.makedirs(os.path.join(dest, 'input', 'lfdata'), exist_ok=True)
+    os.makedirs(os.path.join(dest, 'input', 'climdata'), exist_ok=True)
+    os.makedirs(os.path.join(dest, 'output'), exist_ok=True)
+
 
 def prepare_input(dest:str) -> None:
     log.debug('Prepare input')
     log.debug('dest: %s' % dest)
+    
     prepare_filestructure(dest)
 
     # move this to a config or make it smarter
     vars = ['prec', 'temp', 'rad']
     ds_files = ['egu2018_%s_35ka_def_landid.nc' % v for v in vars]
     split_climate(ds_files, dt=100, ds_path=os.path.join(LPJGUESS_FORCINGS_PATH, 'climdata'),
-                                    dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'climdata'), 
+                                    dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'input', 'climdata'), 
                                     time_step=TS.MONTHLY)
 
 def prepare_runfiles(dest:str, dt:int) -> None:
@@ -115,7 +166,7 @@ def prepare_runfiles(dest:str, dt:int) -> None:
                 'LFDATA': 'lpj2ll_landform_data.nc',
                 'SITEDATA': 'lpj2ll_site_data.nc',
                 # setup data
-                'GRIDLIST': 'gridlist.txt',
+                'GRIDLIST': 'landid.txt',
                 'NYEARSPINUP': '500',
                 'RESTART': restart
                 }
@@ -134,15 +185,19 @@ class DynVeg_LpjGuess(Component):
     def timestep(self):
         return self._current_timestep
 
-    def __init__(self, dest:str, spinup:bool = False):
-        self._spinup = spinup
+    def __init__(self, dest:str):
+        self._spinup = True
         self._current_timestep = 0
         self._dest = dest
         prepare_input(self._dest)
 
     def run_one_step(self) -> None:
         prepare_runfiles(self._dest, self._current_timestep)
+        generate_landform_files(self._dest)
         execute_lpjguess(self._dest)
+        move_state(self._dest)
+        if self.timestep == 0:
+            self._spinup = False
         self._current_timestep += 1
 
 
