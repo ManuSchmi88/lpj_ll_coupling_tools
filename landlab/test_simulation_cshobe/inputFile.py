@@ -52,8 +52,8 @@ vRef        = 1    #1 = 100%, reference vegetation-cover for fully vegetated con
 w           = 1    #Scaling factor for vegetation-influence (see Istanbulluoglu and Bras 2005)
 
 #Fluvial Erosion/SPACE:
-k_sediment = 9e-9 
-k_bedrock  = 9e-10 
+k_sediment = 5e-8 
+k_bedrock  = 5e-9 
 Ff         = 0 
 phi        = 0.1
 Hstar      = 10.

@@ -179,7 +179,7 @@ max_Ksn     = [] #max channel steepness
 ##---------------------------------Component initialization---------------------#
 
 
-fr = FlowRouter(mg,method = 'd4', runoff_rate = baseRainfall)
+fr = FlowRouter(mg,method = 'd8', runoff_rate = baseRainfall)
 
 lm = DepressionFinderAndRouter(mg)
 
@@ -225,7 +225,6 @@ while elapsed_time < totalT:
     lm.map_depressions()
     floodedNodes = np.where(lm.flood_status==3)[0]
     sp.run_one_step(dt = dt, flooded_nodes = floodedNodes)
-    #ld.run_one_step(dt = dt)
     expWeath.calc_soil_prod_rate()
     DDdiff.run_one_step(dt=dt)
     #lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
@@ -244,8 +243,8 @@ while elapsed_time < totalT:
     #        (mg.at_node['soil_production__rate'][:] * dt)
 
     #recalculate topographic elevation
-    #mg.at_node['topographic__elevation'][:] = \
-    #        mg.at_node['bedrock__elevation'][:] + mg.at_node['soil__depth'][:]
+    mg.at_node['topographic__elevation'][:] = \
+            mg.at_node['bedrock__elevation'][:] + mg.at_node['soil__depth'][:]
 
     #Calculate median soil-depth
     #for ids in np.unique(mg.at_node['landform__ID'][:]):
