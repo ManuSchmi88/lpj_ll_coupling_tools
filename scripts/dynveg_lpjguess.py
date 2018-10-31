@@ -29,7 +29,7 @@ LPJGUESS_CO2FILE = os.environ.get('LPJGUESS_CO2FILE', 'co2.txt')
 
 # logging setup
 logPath = '.'
-fileName = __file__.replace('.py','')
+fileName = 'dynveg_lpjguess'
 
 FORMAT="%(levelname).1s %(asctime)s %(filename)s:%(lineno)s - %(funcName).15s :: %(message)s"
 logging.basicConfig(
