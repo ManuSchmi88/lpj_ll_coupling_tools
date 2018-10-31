@@ -14,7 +14,7 @@ from landlab import RasterModelGrid
 from landlab import CLOSED_BOUNDARY, FIXED_VALUE_BOUNDARY
 from landlab.components.flow_routing import FlowRouter
 from landlab.components import ExponentialWeatherer
-from landlab.components import DepthDependentVegiDiffuser
+from landlab.components import DepthDependentDiffuser
 from landlab.components import LinearDiffuser
 from landlab.components import FastscapeEroder
 from landlab.components import Space
@@ -179,11 +179,9 @@ max_Ksn     = [] #max channel steepness
 ##---------------------------------Component initialization---------------------#
 
 
-fr = FlowRouter(mg, runoff_rate = baseRainfall)
+fr = FlowRouter(mg,method = 'd4', runoff_rate = baseRainfall)
 
 lm = DepressionFinderAndRouter(mg)
-
-ld = LinearDiffuser(mg, linear_diffusivity = linDiff)
 
 expWeath = ExponentialWeatherer(mg, soil_production__maximum_rate =
         soilProductionRate, soil_production__decay_depth = 2.5)
@@ -197,6 +195,11 @@ sp = Space(mg, K_sed=Kvs, K_br=Kvb,
            solver = solver)
 
 lc = landformClassifier(mg)
+
+DDdiff = DepthDependentDiffuser(mg, 
+            linear_diffusivity = linDiff,
+            soil_transport_decay_depth = 2)
+
 
 print("finished with the initialization of the erosion components")   
 print("---------------------")
@@ -222,8 +225,9 @@ while elapsed_time < totalT:
     lm.map_depressions()
     floodedNodes = np.where(lm.flood_status==3)[0]
     sp.run_one_step(dt = dt, flooded_nodes = floodedNodes)
-    ld.run_one_step(dt = dt)
+    #ld.run_one_step(dt = dt)
     expWeath.calc_soil_prod_rate()
+    DDdiff.run_one_step(dt=dt)
     #lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
     #lpj_import_run_one_step(mg, '../input/sp_lai.out', method = 'cumulative')
 
@@ -236,8 +240,8 @@ while elapsed_time < totalT:
     mg.at_node['soil__depth'][0] = 0
     
     #add newly weathered soil
-    mg.at_node['soil__depth'][:] += \
-            (mg.at_node['soil_production__rate'][:] * dt)
+    #mg.at_node['soil__depth'][:] += \
+    #        (mg.at_node['soil_production__rate'][:] * dt)
 
     #recalculate topographic elevation
     #mg.at_node['topographic__elevation'][:] = \
@@ -342,15 +346,15 @@ while elapsed_time < totalT:
         imshow_grid(mg,erosionMatrix,grid_units=['m','m'],var_name='Erosion m/yr',cmap='jet',limits=[DHDTLowLim,DHDTHighLim])
         plt.savefig('./DHDT/eMap_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
-        ##Create Ksn Maps
+        ##Create ACC Maps
         #plt.figure()
-        #imshow_grid(mg, 'channel__steepness_index', grid_units=['m','m'],
+        #imshow_grid(mg, 'drainage__area', grid_units=['m','m'],
         #        var_name='ksn', cmap='jet')
         #plt.savefig('./Ksn/ksnMap_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         #plt.close()
         plt.figure()
         imshow_grid(mg,'soil__depth',grid_units=['m','m'],var_name=
-                'Elevation',cmap='terrain', limits=[0,1.5])
+                'Elevation',cmap='terrain')
         plt.savefig('./SoilDepth/SD_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
         #Create SoilProd Maps

@@ -39,7 +39,7 @@ upliftRate = 2.e-5 #m/yr, Topographic uplift rate
 
 #Surface Processes
 #Linear Diffusion:
-linDiffBase = 4e-1 #m2/yr, base linear diffusivity for bare-bedrock
+linDiffBase = 1e-1 #m2/yr, base linear diffusivity for bare-bedrock
 alphaDiff   = 0.3  #Scaling factor for vegetation-influence (see Instabulluoglu and Bras 2005)
 
 #Fluvial Erosion:
