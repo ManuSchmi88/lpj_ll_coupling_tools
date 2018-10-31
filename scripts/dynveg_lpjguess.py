@@ -130,9 +130,10 @@ def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
     log.debug('Prepare file structure')
     log.debug('Dest: %s' % dest)
     if os.path.isdir(dest):
-        log.warn('Destination folder exists... removing in 3 sec')
-        time.sleep(3)
-        shutil.rmtree(dest)
+        log.fatal('Destination folder exists...')
+        exit(-1)
+        #time.sleep(3)
+        #shutil.rmtree(dest)
     if source:
         shutil.copytree(source, dest)        
     else:
