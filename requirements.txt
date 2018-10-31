@@ -1,0 +1,5 @@
+coloredlogs
+landlab
+numpy
+xarray
+tqdm

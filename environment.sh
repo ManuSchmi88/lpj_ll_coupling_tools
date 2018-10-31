@@ -1,5 +1,5 @@
 # source this to overwrite script default paths
-export LANDLAB_OUTPUT_PATH=landlab/output/exampleOutput
+export LANDLAB_OUTPUT_PATH=landlab/output
 export LPJGUESS_INPUT_PATH=run
 export LPJGUESS_TEMPLATE_PATH=lpjguess.template
 export LPJGUESS_FORCINGS_PATH=forcings

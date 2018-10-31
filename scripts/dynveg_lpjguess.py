@@ -14,6 +14,8 @@ import time
 from tqdm import tqdm
 from typing import Dict, List, Optional
 
+# this is a bit hacky - import scripts main as a function and use here
+# should be refactored into this script
 from create_input_for_lpjguess import main as create_input_main
 
 # define consts - source environemt.sh
@@ -27,7 +29,7 @@ LPJGUESS_CO2FILE = os.environ.get('LPJGUESS_CO2FILE', 'co2.txt')
 
 # logging setup
 logPath = '.'
-fileName = 'dynveg_lpjguess'
+fileName = __file__.replace('.py','')
 
 FORMAT="%(levelname).1s %(asctime)s %(filename)s:%(lineno)s - %(funcName).15s :: %(message)s"
 logging.basicConfig(
@@ -156,7 +158,9 @@ def prepare_input(dest:str) -> None:
 def prepare_runfiles(self, dt:int) -> None:
     """Prepare files specific to this dt run"""
     # fill template files with per-run data:
-    restart = '0' if dt == 0 else '1'
+    log.warn('REPEATING SPINUP FOR EACH DT !!!')
+    #restart = '0' if dt == 0 else '1'
+    restart='0'
 
     run_data = {# climate data
                 'CLIMPREC': 'egu2018_prec_35ka_def_landid_%s.nc' % str(dt).zfill(6),
@@ -217,6 +221,8 @@ DynVeg_LpjGuess.move_state = move_state
 
 
 if __name__ == '__main__':
+    # silence debug logging by setup loglevel to INFO here
+    logging.getLogger().setLevel(logging.INFO)
     log.info('DynVeg LPJ-Guess Component')
     DT = 100
     component = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH)
