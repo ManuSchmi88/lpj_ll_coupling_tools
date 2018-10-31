@@ -1,3 +1,4 @@
+import coloredlogs
 from enum import Enum
 import glob
 from landlab import Component
@@ -28,48 +29,28 @@ LPJGUESS_CO2FILE = os.environ.get('LPJGUESS_CO2FILE', 'co2.txt')
 logPath = '.'
 fileName = 'dynveg_lpjguess'
 
+FORMAT="%(levelname).1s %(asctime)s %(filename)s:%(lineno)s - %(funcName).15s :: %(message)s"
 logging.basicConfig(
     level=logging.DEBUG,
-    format = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s",
-    #format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+    format = FORMAT,
     handlers=[
         logging.FileHandler("{0}/{1}.log".format(logPath, fileName)),
         logging.StreamHandler()
     ])
 
-log = logging.getLogger()
-
+log = logging.getLogger(__name__)
+coloredlogs.install(level='DEBUG', fmt=FORMAT, datefmt="%H:%M:%S")
 
 class TS(Enum):
     DAILY = 1
     MONTHLY = 2
 
 def add_time_attrs(ds, calendar_year=0):
-    ds['time'].attrs['units'] = "days since 1-1-15 00:00:00" ;
-    ds['time'].attrs['axis'] = "T" ;
-    ds['time'].attrs['long_name'] = "time" ;
-    ds['time'].attrs['standard_name'] = "time" ;
+    ds['time'].attrs['units'] = "days since 1-1-15 00:00:00" 
+    ds['time'].attrs['axis'] = "T" 
+    ds['time'].attrs['long_name'] = "time" 
+    ds['time'].attrs['standard_name'] = "time" 
     ds['time'].attrs['calendar'] = "%d yr B.P." % calendar_year
-
-
-def generate_landform_files(dest:str) -> None:
-    log.info('Convert landlab netcdf data to lfdata fromat')
-    create_input_main()
-
-
-def execute_lpjguess(dest:str) -> None:
-    '''Run LPJ-Guess for one time-step'''
-    log.info('Execute LPJ-Guess run')
-
-    p = subprocess.Popen([LPJGUESS_BIN, '-input', 'sp', 'lpjguess.ins'], cwd=dest)
-    p.wait()
-
-def move_state(dest:str) -> None:
-    '''Move state dumpm files into loaddir for next timestep'''
-    log.info('Move state to loaddir')
-    state_files = glob.glob(os.path.join(dest, 'dumpdir_eor/*'))
-    for state_file in state_files:
-        shutil.copy(state_file, os.path.join(dest, 'loaddir'))
 
 
 def fill_template(template: str, data: Dict[str, str]) -> str:
@@ -78,6 +59,7 @@ def fill_template(template: str, data: Dict[str, str]) -> str:
     with open( template, 'rU' ) as f:
         src = Template( f.read() )
     return src.substitute(data)
+
 
 def split_climate(ds_files:List[str], 
                   dt:int, 
@@ -111,7 +93,7 @@ def split_climate(ds_files:List[str],
                 if g_cnt == 0:
                     time_ = ds_grp['time'][:dt*12]
 
-                add_time_attrs(ds, calendar_year=22_000)
+                add_time_attrs(ds_grp, calendar_year=22_000)
                 foutname = os.path.basename(fpath.replace('.nc',''))
                 foutname = os.path.join(dest_path, '%s_%s.nc' % (foutname, str(g_cnt).zfill(6)))
                 ds_grp.to_netcdf(foutname, format='NETCDF4_CLASSIC')
@@ -122,6 +104,25 @@ def split_climate(ds_files:List[str],
     shutil.copyfile(src, os.path.join(dest_path, LPJGUESS_CO2FILE))
             
 
+def generate_landform_files(self) -> None:
+    log.info('Convert landlab netcdf data to lfdata fromat')
+    create_input_main()
+
+def execute_lpjguess(self) -> None:
+    '''Run LPJ-Guess for one time-step'''
+    log.info('Execute LPJ-Guess run')
+    p = subprocess.Popen([LPJGUESS_BIN, '-input', 'sp', 'lpjguess.ins'], cwd=self._dest)
+    p.wait()
+
+def move_state(self) -> None:
+    '''Move state dumpm files into loaddir for next timestep'''
+    log.info('Move state to loaddir')
+    state_files = glob.glob(os.path.join(self._dest, 'dumpdir_eor/*'))
+    for state_file in state_files:
+        shutil.copy(state_file, os.path.join(self._dest, 'loaddir'))
+
+        # for debugging:
+        shutil.copy(state_file, os.path.join('tmp.state'))
             
 def prepare_filestructure(dest:str, source:Optional[str]=None) -> None:
     log.debug('Prepare file structure')
@@ -152,7 +153,7 @@ def prepare_input(dest:str) -> None:
                                     dest_path=os.path.join(LPJGUESS_INPUT_PATH, 'input', 'climdata'), 
                                     time_step=TS.MONTHLY)
 
-def prepare_runfiles(dest:str, dt:int) -> None:
+def prepare_runfiles(self, dt:int) -> None:
     """Prepare files specific to this dt run"""
     # fill template files with per-run data:
     restart = '0' if dt == 0 else '1'
@@ -171,11 +172,17 @@ def prepare_runfiles(dest:str, dt:int) -> None:
                 'RESTART': restart
                 }
 
-    insfile = fill_template( os.path.join(dest, LPJGUESS_INS_FILE_TPL), run_data )
-    open(os.path.join(dest, 'lpjguess.ins'), 'w').write(insfile)
+    insfile = fill_template( os.path.join(self._dest, LPJGUESS_INS_FILE_TPL), run_data )
+    open(os.path.join(self._dest, 'lpjguess.ins'), 'w').write(insfile)
 
 class DynVeg_LpjGuess(Component):
     """classify a DEM in different landform, according to slope, elevation and aspect"""
+
+    def __init__(self, dest:str):
+        self._spinup = True
+        self._timesteps = [0]
+        self._dest = dest
+        prepare_input(self._dest)
 
     @property
     def spinup(self):
@@ -183,34 +190,36 @@ class DynVeg_LpjGuess(Component):
     
     @property
     def timestep(self):
-        return self._current_timestep
+        '''Current timestep of sim'''
+        if len(self._timesteps) > 0:
+            return self._timesteps[-1]
+        return None
 
-    def __init__(self, dest:str):
-        self._spinup = True
-        self._current_timestep = 0
-        self._dest = dest
-        prepare_input(self._dest)
+    @property
+    def elapsed(self):
+        '''Total sim time elapsed'''
+        return sum(self._timesteps)
 
-    def run_one_step(self) -> None:
-        prepare_runfiles(self._dest, self._current_timestep)
-        generate_landform_files(self._dest)
-        execute_lpjguess(self._dest)
-        move_state(self._dest)
+    def run_one_step(self, dt:int=100) -> None:
+        '''Run one lpj simulation step (duration: dt)'''
+        self.prepare_runfiles(self.timestep // dt)
+        self.generate_landform_files()
+        self.execute_lpjguess()
+        self.move_state()
         if self.timestep == 0:
             self._spinup = False
-        self._current_timestep += 1
+        self._timesteps.append( dt )
 
+DynVeg_LpjGuess.prepare_runfiles = prepare_runfiles
+DynVeg_LpjGuess.generate_landform_files = generate_landform_files
+DynVeg_LpjGuess.execute_lpjguess = execute_lpjguess
+DynVeg_LpjGuess.move_state = move_state
 
-def test_dynveg_contructor():
-
-    c = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH)
-    print(c.spinup)
-    print(c)
-
-    for i in range(3):
-        c.run_one_step()
 
 if __name__ == '__main__':
-    log.info('Starting dynveg lpjguess component')
-    test_dynveg_contructor()
+    log.info('DynVeg LPJ-Guess Component')
+    DT = 100
+    component = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH)
 
+    for i in range(2):
+        component.run_one_step(dt=DT)
