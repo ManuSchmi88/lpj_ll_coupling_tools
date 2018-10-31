@@ -61,9 +61,9 @@ vs         = 5
 m          = 0.5
 n          = 1
 #sp_crit_sedi = 5.e-4
-sp_crit_sedi = 2.e-5 
+sp_crit_sedi = 6.e-4 
 #sp_crit_bedrock = 6.e-4
-sp_crit_bedrock = 3.e-5 
+sp_crit_bedrock = 8.e-4 
 solver = 'adaptive'
 
 #Lithology

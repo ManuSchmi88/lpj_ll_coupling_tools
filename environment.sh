@@ -1,6 +1,6 @@
 # source this to overwrite script default paths
-export LANDLAB_OUTPUT_PATH=landlab/output
-export LPJGUESS_INPUT_PATH=run
+export LANDLAB_OUTPUT_PATH=./output
+export LPJGUESS_INPUT_PATH=.
 export LPJGUESS_TEMPLATE_PATH=lpjguess.template
 export LPJGUESS_FORCINGS_PATH=forcings
 export LPJGUESS_INS_FILE_TPL=lpjguess.ins.tpl
