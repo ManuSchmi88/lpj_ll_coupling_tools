@@ -91,7 +91,8 @@ def derive_base_info(ll_inpath: str) -> Tuple[str, int, List[str], List[Tuple[fl
     files_grabbed = []
     for files in types:
         files_grabbed.extend(glob.glob(os.path.join(ll_inpath, files)))
-    
+    log.warn(files_grabbed) 
+    log.warn(ll_inpath)
     # get global attributes (lat, lon, classification)
     # check that classifiaction match
     coordinates = []
@@ -166,8 +167,11 @@ def main():
 
 
     # get path info for in- and output
-    LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
-    LPJGUESS_INPUT_PATH = os.path.join(os.environ.get('LPJGUESS_INPUT_PATH', 'run'), 'input', 'lfdata')
+    #TODO: CHECK WHAT CHRISTIAN HAS DONE HERE!!!!Q
+    #LANDLAB_OUTPUT_PATH = os.environ.get('LANDLAB_OUTPUT_PATH', 'landlab/output')
+    LANDLAB_OUTPUT_PATH = './temp_output'
+    #LPJGUESS_INPUT_PATH = os.path.join(os.environ.get('LPJGUESS_INPUT_PATH', 'run'), 'input', 'lfdata')
+    LPJGUESS_INPUT_PATH = './temp_lpj'
 
     log.debug(f'SOIL_NC: {SOIL_NC}')
     log.debug(f'ELEV_NC: {ELEVATION_NC}')

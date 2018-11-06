@@ -361,6 +361,8 @@ while elapsed_time < totalT:
                                               'lgt.classification' : classificationType,
                                               'lgt.elevation_step' : elevationStepBin})
         ##Create NetCDF Output
+        os.rename('./temp_output/current_output.nc',
+                './temp_output/current_backup.nc')
         write_netcdf('./temp_output/current_output.nc',
                 mg,format='NETCDF4', attrs = {'lgt.lat' : latitude,
                                               'lgt.lon' : longitude,
@@ -369,6 +371,7 @@ while elapsed_time < totalT:
                                               'lgt.timestep' : elapsed_time,
                                               'lgt.classification' : classificationType,
                                               'lgt.elevation_step' : elevationStepBin})
+                
         ##Create erosion_diffmaps
         plt.figure()
         imshow_grid(mg,erosionMatrix,grid_units=['m','m'],var_name='Erosion m/yr',cmap='jet',limits=[DHDTLowLim,DHDTHighLim])
@@ -383,12 +386,12 @@ while elapsed_time < totalT:
         plt.figure()
         imshow_grid(mg,'soil__depth',grid_units=['m','m'],var_name=
                 'Elevation',cmap='terrain')
-        plt.savefig('./SoilDepth/SD_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
+        plt.savefig('./ll_output/SoilDepth/SD_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
         #Create SoilProd Maps
         plt.figure()
         imshow_grid(mg,'soil_production__rate')
-        plt.savefig('./SoilP/SoilP_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
+        plt.savefig('./ll_output/SoilP/SoilP_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
 
     elapsed_time += dt #update elapsed time

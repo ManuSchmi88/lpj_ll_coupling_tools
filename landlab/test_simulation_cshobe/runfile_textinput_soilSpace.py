@@ -225,7 +225,17 @@ while elapsed_time < totalT:
     lm.map_depressions()
     floodedNodes = np.where(lm.flood_status==3)[0]
     sp.run_one_step(dt = dt, flooded_nodes = floodedNodes)
+
+    #fetch the nodes where space eroded the bedrock__elevation over topographic__elevation
+    #after conversation with charlie shobe:
+    b = mg.at_node['bedrock__elevation']
+    b[:] = np.minimum(b, mg.at_node['topographic__elevation'])
+
+    #calculate regolith-production rate
     expWeath.calc_soil_prod_rate()
+    
+    #Generate and move the soil around.
+    #THIS SUBSTITUES THE "manual" creation of soil that was done 251-253 
     DDdiff.run_one_step(dt=dt)
     #lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
     #lpj_import_run_one_step(mg, '../input/sp_lai.out', method = 'cumulative')
@@ -353,7 +363,7 @@ while elapsed_time < totalT:
         #plt.close()
         plt.figure()
         imshow_grid(mg,'soil__depth',grid_units=['m','m'],var_name=
-                'Elevation',cmap='terrain')
+                'Elevation',cmap='terrain',limits=[0,2])
         plt.savefig('./SoilDepth/SD_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
         #Create SoilProd Maps
