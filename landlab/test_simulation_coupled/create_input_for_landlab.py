@@ -62,7 +62,7 @@ def read_csv_files(filename, ftype='lai', pft_class='total'):
     df_grp = df_grp.apply(_calc_fpc, 1).sum(axis=1)
     x = df_grp.reset_index().set_index(['Year', 'Stand'])
     del x['Lon'], x['Lat']
-    fpc_array = x.mean(level=1).T
+    fpc_array = x.mean(level=1).T / 100
     #fpc_array.to_csv(f'fpc_{v}.csv', index=False)
     #fpc_array = np.genfromtxt(filename, delimiter = ';', names = True)
 

@@ -121,9 +121,8 @@ def generate_landform_files(self) -> None:
 def execute_lpjguess(self) -> None:
     '''Run LPJ-Guess for one time-step'''
     log.info('Execute LPJ-Guess run')
-    log.info(self._dest)
-    p = subprocess.check_output([LPJGUESS_BIN, '-input', 'sp', 'lpjguess.ins'], cwd=self._dest)
-    log.info("return value", p)
+    p = subprocess.Popen([LPJGUESS_BIN, '-input', 'sp', 'lpjguess.ins'], cwd=self._dest)
+    p.wait()
 
 def move_state(self) -> None:
     '''Move state dumpm files into loaddir for next timestep'''
@@ -173,10 +172,10 @@ def prepare_runfiles(self, step_counter:int) -> None:
     restart='0'
 
     run_data = {# climate data
-                'CLIMPREC': 'egu2018_prec_35ka_def_landid_%s.nc' % str(int(step_counter)).zfill(6),
-                'CLIMWET':  'egu2018_prec_35ka_def_landid_%s.nc' % str(int(step_counter)).zfill(6),
-                'CLIMRAD':  'egu2018_rad_35ka_def_landid_%s.nc'  % str(int(step_counter)).zfill(6),
-                'CLIMTEMP': 'egu2018_temp_35ka_def_landid_%s.nc' % str(int(step_counter)).zfill(6),
+                'CLIMPREC': 'egu2018_prec_35ka_def_landid_%s.nc' % str(int(step_counter - 1)).zfill(6),
+                'CLIMWET':  'egu2018_prec_35ka_def_landid_%s.nc' % str(int(step_counter - 1)).zfill(6),
+                'CLIMRAD':  'egu2018_rad_35ka_def_landid_%s.nc'  % str(int(step_counter - 1)).zfill(6),
+                'CLIMTEMP': 'egu2018_temp_35ka_def_landid_%s.nc' % str(int(step_counter - 1)).zfill(6),
                 # landform files
                 'LFDATA': 'lpj2ll_landform_data.nc',
                 'SITEDATA': 'lpj2ll_site_data.nc',
@@ -217,9 +216,9 @@ class DynVeg_LpjGuess(Component):
         '''Total sim time elapsed'''
         return sum(self._timesteps)
 
-    def run_one_step(self,step_counter, dt:int=100) -> None:
+    def run_one_step(self, dt:int=100) -> None:
         '''Run one lpj simulation step (duration: dt)'''
-        self.prepare_runfiles(step_counter)
+        self.prepare_runfiles(self.timestep)
         self.generate_landform_files()
         self.execute_lpjguess()
         self.move_state()

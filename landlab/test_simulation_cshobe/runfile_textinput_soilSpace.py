@@ -237,7 +237,7 @@ while elapsed_time < totalT:
     #Generate and move the soil around.
     #THIS SUBSTITUES THE "manual" creation of soil that was done 251-253 
     DDdiff.run_one_step(dt=dt)
-    #lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
+    lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
     #lpj_import_run_one_step(mg, '../input/sp_lai.out', method = 'cumulative')
 
     #apply uplift
@@ -371,6 +371,8 @@ while elapsed_time < totalT:
         imshow_grid(mg,'soil_production__rate')
         plt.savefig('./SoilP/SoilP_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
+        #create different topo_seed files
+        np.save('./seeds/topoSeed_'+str(int(elapsed_time/outInt)).zfill(zp),mg.at_node['topographic__elevation'][:])
 
     elapsed_time += dt #update elapsed time
 tE = time.time()

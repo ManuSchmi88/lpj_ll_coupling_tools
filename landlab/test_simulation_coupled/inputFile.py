@@ -35,11 +35,11 @@ spin_up = 90e6
 dt = 100
 
 #Uplift
-upliftRate = 2.e-5 #m/yr, Topographic uplift rate
+upliftRate = 1.e-5 #m/yr, Topographic uplift rate
 
 #Surface Processes
 #Linear Diffusion:
-linDiffBase = 1e-1 #m2/yr, base linear diffusivity for bare-bedrock
+linDiffBase = 1e-2 #m2/yr, base linear diffusivity for bare-bedrock
 alphaDiff   = 0.3  #Scaling factor for vegetation-influence (see Instabulluoglu and Bras 2005)
 
 #Fluvial Erosion:
@@ -58,17 +58,17 @@ Ff         = 0
 phi        = 0.1
 Hstar      = 10.
 vs         = 5 
-m          = 0.5
-n          = 1
+m          = 0.6
+n          = 0.7
 #sp_crit_sedi = 5.e-4
-sp_crit_sedi = 6.e-4 
+sp_crit_sedi = 5.e-4
 #sp_crit_bedrock = 6.e-4
-sp_crit_bedrock = 8.e-4 
+sp_crit_bedrock = 7.e-4
 solver = 'adaptive'
 
 #Lithology
 initialSoilDepth = 1 #m
-soilProductionRate = 0.000004 #m/dt
+soilProductionRate = 0.0000006 #m/dt
 
 #Climate Parameters
 baseRainfall = float(3) #m/dt, base steady-state rainfall-mean over the dt-timespan
@@ -89,4 +89,4 @@ classificationType = 'SIMPLE'
 elevationStepBin   = 200
 
 #output
-outInt = 1000000 #yrs, model-time-interval in which output is created
+outInt = 100 #yrs, model-time-interval in which output is created

@@ -52,8 +52,8 @@ vRef        = 1    #1 = 100%, reference vegetation-cover for fully vegetated con
 w           = 1    #Scaling factor for vegetation-influence (see Istanbulluoglu and Bras 2005)
 
 #Fluvial Erosion/SPACE:
-k_sediment = 1e-9 
-k_bedrock  = 1e-10 
+k_sediment = 5e-8 
+k_bedrock  = 5e-9 
 Ff         = 0 
 phi        = 0.1
 Hstar      = 10.
@@ -83,10 +83,16 @@ sinPeriod = 1e5 #yrs, period of sin-modification
 latitude   = -26.25 #center-coordinate of grid cell for model area
 longitude  = -70.75 #center-coordinate of grid cell for model area
 lpj_output = '../input/sp_lai.out'
+LPJGUESS_INPUT_PATH = './temp_lpj'
+LPJGUESS_TEMPLATE_PATH = './lpjguess.template'
+LPJGUESS_FORCINGS_PATH = './forcings'
+LPJGUESS_INS_FILE_TPL = 'lpjguess.ins.tpl'
+LPJGUESS_BIN = '/esd/esd01/data/mschmid/coupling/build/guess'
+LPJGUESS_CO2FILE = 'co2_TraCE_egu2018_35ka_const180ppm.txt'
 
 #landform classifier input:
 classificationType = 'SIMPLE'
 elevationStepBin   = 200
 
 #output
-outInt = 1000000 #yrs, model-time-interval in which output is created
+outInt = 100 #yrs, model-time-interval in which output is created
