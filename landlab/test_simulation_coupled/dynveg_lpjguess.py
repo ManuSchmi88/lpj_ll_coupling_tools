@@ -127,9 +127,14 @@ def execute_lpjguess(self) -> None:
     log.info(f"returned status of lpj run:{status}")
 
 def move_state(self) -> None:
-    '''Move state dumpm files into loaddir for next timestep'''
+    '''Move state dump files into loaddir for next timestep'''
     log.info('Move state to loaddir')
+    
     state_files = glob.glob(os.path.join(self._dest, 'dumpdir_eor/*'))
+    if len(state_files) == 0:
+        log.error("No state found")
+        exit(-1)
+
     for state_file in state_files:
         shutil.copy(state_file, os.path.join(self._dest, 'loaddir'))
 
@@ -169,9 +174,9 @@ def prepare_input(dest:str) -> None:
 def prepare_runfiles(self, step_counter:int) -> None:
     """Prepare files specific to this dt run"""
     # fill template files with per-run data:
-    log.warn('REPEATING SPINUP FOR EACH DT !!!')
-    #restart = '0' if dt == 0 else '1'
-    restart='0'
+    #log.warn('REPEATING SPINUP FOR EACH DT !!!')
+    log.warn(f"step_counter:{step_counter}")
+    restart = '0' if step_counter == 0 else '1'
 
     run_data = {# climate data
                 'CLIMPREC': 'egu2018_prec_35ka_def_landid_%s.nc' % str(int(step_counter)).zfill(6),

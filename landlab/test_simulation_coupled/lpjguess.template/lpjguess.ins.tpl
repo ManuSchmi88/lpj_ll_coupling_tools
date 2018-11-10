@@ -91,7 +91,7 @@ nyear_spinup $NYEARSPINUP ! number of years to spin up the simulation for
 restart $RESTART				! whether to start from a state file
 
 ! save_state in run_landform always 0 as we auto-save into landform_state_path
-save_state 1			! whether to save a state file
+save_state 0			! whether to save a state file
 state_path "loaddir/"	! directory to read state files from
  
 landform_state_path "dumpdir_eor/"	! directory to put state files in 
