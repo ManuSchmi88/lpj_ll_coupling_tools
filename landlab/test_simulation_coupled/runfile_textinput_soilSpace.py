@@ -53,7 +53,7 @@ LPJGUESS_INPUT_PATH = './temp_lpj'
 LPJGUESS_TEMPLATE_PATH = './lpjguess.template'
 LPJGUESS_FORCINGS_PATH = './forcings'
 LPJGUESS_INS_FILE_TPL = 'lpjguess.ins.tpl'
-LPJGUESS_BIN = '/esd/esd01/data/mschmid/coupling/build/guess'
+LPJGUESS_BIN = '/Users/cwerner/Documents/build/guess'
 LPJGUESS_CO2FILE = 'co2_TraCE_egu2018_35ka_const180ppm.txt'
 
 #timelogging for debugs
@@ -263,6 +263,13 @@ while elapsed_time < totalT:
         lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
     else:
         lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
+        try:
+            os.makedirs('./debugging')
+        except:
+            pass
+        shutil.copy("./temp_lpj/output/sp_lai.out", f"./debugging/sp_lai.{str(counter).zfill(6)}.out")
+
+
     lpj.run_one_step(counter, dt=dt)
 
     #apply uplift
