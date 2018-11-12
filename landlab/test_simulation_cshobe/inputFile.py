@@ -28,10 +28,10 @@ nrows = 21 #number of rows
 dx    = 100 #spacing between nodes
 
 #Model Runtime Parameters
-totalT = 90e6 #total model runtime
-ssT    = 90e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
-sfT    = 90e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
-spin_up = 90e6 
+totalT = 200e6 #total model runtime
+ssT    = 200e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
+sfT    = 200e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
+spin_up = 200e6 
 dt = 100
 
 #Uplift
@@ -52,8 +52,8 @@ vRef        = 1    #1 = 100%, reference vegetation-cover for fully vegetated con
 w           = 1    #Scaling factor for vegetation-influence (see Istanbulluoglu and Bras 2005)
 
 #Fluvial Erosion/SPACE:
-k_sediment = 1e-9 
-k_bedrock  = 1e-10 
+k_sediment = 6e-9 
+k_bedrock  = 6e-10 
 Ff         = 0 
 phi        = 0.1
 Hstar      = 10.

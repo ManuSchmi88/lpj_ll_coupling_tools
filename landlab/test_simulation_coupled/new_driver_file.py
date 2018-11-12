@@ -4,14 +4,6 @@ Derived from the messy thing I produced to glue/patch the model together.
 """
 
 ## Import necessary Python and Landlab Modules
-#external modules
-from matplotlib import pyplot as plt
-from matplotlib import rcParams
-rcParams.update({'figure.autolayout': True})
-rcParams['agg.path.chunksize'] = 200000000
-import time
-import numpy as np
-import os.path
 #basic grid setup
 from landlab import RasterModelGrid
 from landlab import CLOSED_BOUNDARY, FIXED_VALUE_BOUNDARY
@@ -32,8 +24,16 @@ from landlab.io.netcdf import write_netcdf
 from landlab.io.netcdf import read_netcdf
 #coupling-specific
 from create_input_for_landlab import lpj_import_run_one_step 
+#external modules
+from matplotlib import pyplot as plt
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+rcParams['agg.path.chunksize'] = 200000000
+import time
+import numpy as np
+import os.path
 #import the .py-inputfile
-from inputFile import *
+from inputFileNew import *
 
 
 ##----------------------Basic setup of global variables------------------------
@@ -67,6 +67,7 @@ mg.add_zeros('node', 'soil__depth')
 mg.add_zeros('node', 'tpi__mask')
 mg.add_zeros('node', 'erosion__rate')
 mg.add_zeros('node', 'median_soil__depth')
+mg.add_zeros('node', 'vegetation__density')
 
 #this checks if there is a initial topography we like to start with. 
 #initial topography must be of filename/type 'topoSeed.npy'
@@ -165,7 +166,8 @@ lpj = DynVeg_LpjGuess(LPJGUESS_INPUT_PATH,
 
 print("finished with the initialization of the erosion components")   
 print("---------------------")
-
+elapsed_time = 0
+counter = 0
 while elapsed_time < totalT:
 
     #create copy of "old" topography
@@ -196,6 +198,8 @@ while elapsed_time < totalT:
         lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
     else:
         lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
+    
+    #run lpj-guess
     lpj.run_one_step(counter, dt=dt)
 
     #apply uplift
@@ -225,7 +229,9 @@ while elapsed_time < totalT:
     #update LinearDiffuser
     linDiff = linDiffBase*np.exp(-alphaDiff * vegiLinks)
     #reinitalize Diffuser
-    ld   = LinearDiffuser(mg, linear_diffusivity = linDiff) 
+    DDdiff = DepthDependentDiffuser(mg, 
+            linear_diffusivity = linDiff,
+            soil_transport_decay_depth = 2)
 
     #update K_sp
     n_v_frac = nSoil + (nVRef * (mg.at_node['vegetation__density'] / vRef)) #self.vd = VARIABLE!

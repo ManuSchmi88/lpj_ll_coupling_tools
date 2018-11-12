@@ -33,7 +33,7 @@ LPJGUESS_INPUT_PATH = './temp_lpj'
 LPJGUESS_TEMPLATE_PATH = './lpjguess.template'
 LPJGUESS_FORCINGS_PATH = './forcings'
 LPJGUESS_INS_FILE_TPL = 'lpjguess.ins.tpl'
-LPJGUESS_BIN = '/Users/cwerner/Documents/build/guess'
+LPJGUESS_BIN = '/esd/esd01/data/mschmid/coupling/build/guess'
 LPJGUESS_CO2FILE = 'co2_TraCE_egu2018_35ka_const180ppm.txt'
 # logging setup
 logPath = '.'
