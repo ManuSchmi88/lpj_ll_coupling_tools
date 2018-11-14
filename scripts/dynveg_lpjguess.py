@@ -53,6 +53,7 @@ def add_time_attrs(ds, calendar_year=0):
     ds['time'].attrs['long_name'] = "time" 
     ds['time'].attrs['standard_name'] = "time" 
     ds['time'].attrs['calendar'] = "%d yr B.P." % calendar_year
+    return ds
 
 
 def fill_template(template: str, data: Dict[str, str]) -> str:
@@ -81,10 +82,13 @@ def split_climate(ds_files:List[str],
             n_episodes = len(ds.time) // (dt*12)
             log.debug('Number of climate episodes: %d' % n_episodes)
             if time_step == TS.MONTHLY:
+                log.debug(' monthy file detected')
                 episode = np.repeat(list(range(n_episodes)), dt*12)
             else:
                 episode = np.repeat(list(range(n_episodes)), dt*365)
+                log.debug(' daily file detected')
             ds['grouper'] = xr.DataArray(episode, coords=[('time', ds.time.values)])
+            print(ds['grouper'])
             log.info('Splitting file %s' % ds_file)
 
             for g_cnt, ds_grp in tqdm(ds.groupby(ds.grouper)):
@@ -95,7 +99,7 @@ def split_climate(ds_files:List[str],
                 if g_cnt == 0:
                     time_ = ds_grp['time'][:dt*12]
 
-                add_time_attrs(ds_grp, calendar_year=22_000)
+                ds_grp = add_time_attrs(ds_grp, calendar_year=22_000)
                 foutname = os.path.basename(fpath.replace('.nc',''))
                 foutname = os.path.join(dest_path, '%s_%s.nc' % (foutname, str(g_cnt).zfill(6)))
                 ds_grp.to_netcdf(foutname, format='NETCDF4_CLASSIC')
