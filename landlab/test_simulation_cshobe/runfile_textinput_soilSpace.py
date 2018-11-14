@@ -372,7 +372,9 @@ while elapsed_time < totalT:
         plt.savefig('./SoilP/SoilP_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
         #create different topo_seed files
-        np.save('./seeds/topoSeed_'+str(int(elapsed_time/outInt)).zfill(zp),mg.at_node['topographic__elevation'][:])
+        np.save('./topoSeeds/topoSeed_'+str(int(elapsed_time/outInt)).zfill(zp),mg.at_node['topographic__elevation'][:])
+        np.save('./soilSeeds/soilSeed_'+str(int(elapsed_time/outInt)).zfill(zp),mg.at_node['soil__depth'][:])
+        
 
     elapsed_time += dt #update elapsed time
 tE = time.time()
