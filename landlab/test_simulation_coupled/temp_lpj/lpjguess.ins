@@ -34,16 +34,16 @@ outputdirectory "./output/"
 param "file_co2"      (str "input/climdata/co2_TraCE_egu2018_35ka_const180ppm.txt")
 
 ! N deposition (blank string to use constant pre-industrial level of 2 kgN/ha/year)
-param "file_temp"     (str "input/climdata/egu2018_temp_35ka_def_landid_000000.nc")
+param "file_temp"     (str "input/climdata/egu2018_temp_35ka_def_landid_000006.nc")
 param "variable_temp" (str "temp")
 
-param "file_prec"     (str "input/climdata/egu2018_prec_35ka_def_landid_000000.nc")
+param "file_prec"     (str "input/climdata/egu2018_prec_35ka_def_landid_000006.nc")
 param "variable_prec" (str "prec")
 
-param "file_wetdays"  (str "input/climdata/egu2018_prec_35ka_def_landid_000000.nc") 
+param "file_wetdays"  (str "input/climdata/egu2018_prec_35ka_def_landid_000006.nc") 
 param "variable_wetdays" (str "wet")
 
-param "file_insol"      (str "input/climdata/egu2018_rad_35ka_def_landid_000000.nc") 
+param "file_insol"      (str "input/climdata/egu2018_rad_35ka_def_landid_000006.nc") 
 param "variable_insol"  (str "rad")
 
 param "file_min_temp"      (str "")
@@ -88,7 +88,7 @@ param "file_gridlist_cf" (str "landid.txt")
 nyear_spinup 500 ! number of years to spin up the simulation for
 !state_year 600			! year to save/start state file (no setting = after spinup)
                         ! state_year for first segment, otherwise 100 (?)
-restart 0				! whether to start from a state file
+restart 1				! whether to start from a state file
 
 ! save_state in run_landform always 0 as we auto-save into landform_state_path
 save_state 0			! whether to save a state file
