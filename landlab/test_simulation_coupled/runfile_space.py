@@ -202,7 +202,9 @@ while elapsed_time < totalT:
 
     lpj.run_one_step(counter, dt = dt)
 
-    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
+    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', var='lai', method = 'cumulative')
+    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
+
     #import the lpj_import file and run lpj
     #if counter == 0:
     #    lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
