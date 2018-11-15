@@ -28,10 +28,10 @@ nrows = 21 #number of rows
 dx    = 100 #spacing between nodes
 
 #Model Runtime Parameters
-totalT = 200e6 #total model runtime
-ssT    = 200e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
-sfT    = 200e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
-spin_up = 200e6 
+totalT = 300e6 #total model runtime
+ssT    = 300e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
+sfT    = 300e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
+spin_up = 300e6 
 dt = 100
 
 #Uplift
@@ -39,7 +39,7 @@ upliftRate = 1.e-5 #m/yr, Topographic uplift rate
 
 #Surface Processes
 #Linear Diffusion:
-linDiffBase = 1e-2 #m2/yr, base linear diffusivity for bare-bedrock
+linDiffBase = 5e-1 #m2/yr, base linear diffusivity for bare-bedrock
 alphaDiff   = 0.3  #Scaling factor for vegetation-influence (see Instabulluoglu and Bras 2005)
 
 #Fluvial Erosion:

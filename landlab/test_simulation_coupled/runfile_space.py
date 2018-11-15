@@ -200,23 +200,11 @@ while elapsed_time < totalT:
     #run the landform classifier
     lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
 
+    #run lpjguess
     lpj.run_one_step(counter, dt = dt)
-
-    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
-    #import the lpj_import file and run lpj
-    #if counter == 0:
-    #    lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
-    #else:
-    #    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
-        #lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
-    #    try:
-    #        os.makedirs('./debugging')
-    #    except:
-    #        pass
-    #    shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
     
-    #run lpj-guess
-    #lpj.run_one_step(counter, dt=dt)
+    #import lpjguess results
+    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
 
     #apply uplift
     mg.at_node['bedrock__elevation'][mg.core_nodes] += uplift_per_step
