@@ -200,30 +200,36 @@ while elapsed_time < totalT:
     #run the landform classifier
     lc.run_one_step(elevationStepBin, 300, classtype = classificationType)
 
-    #run lpjguess
-    lpj.run_one_step(counter, dt = dt)
-<<<<<<< HEAD
-=======
+    #run lpjguess once at the beginning and then each timestep after the spinup.
+    if elapsed_time < spin_up:
+        if elapsed_time == 0:
+            lpj.run_one_step(counter, dt = dt)
+            #backup lpj results
+            shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
+            shutil.copy('./temp_lpj/output/sp_mprec.out', f"./debugging/sp_mprec.{str(counter).zfill(6)}.out" )
+            shutil.copy('./temp_lpj/output/sp_tot_runoff.out', f"./debugging/sp_tot_runoff.{str(counter).zfill(6)}.out" )
+            #import lpj lai and precipitation data
+            lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', var='lai', method = 'cumulative')
+            lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
+            #reinitialize the flow router
+            fr = FlowRouter(mg,method = 'd8', runoff_rate = mg.at_node['precipitation'])
 
-    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', var='lai', method = 'cumulative')
-    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
-
-    #import the lpj_import file and run lpj
-    #if counter == 0:
-    #    lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
-    #else:
-    #    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
-        #lpj_import_run_one_step(mg, './input/sp_lai.out', method = 'cumulative')
-    #    try:
-    #        os.makedirs('./debugging')
-    #    except:
-    #        pass
-    #    shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
->>>>>>> 456a06697e9c77e8f4515e468482b6b39351d82d
+        elif elapsed_time > 0:
+            pass
+    elif elapsed_time >= spin_up:
+        #reset counter to 1, to get right position in climate file
+        counter = 1
+        lpj.run_one_step(counter, dt = dt)
+        shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
+        shutil.copy('./temp_lpj/output/sp_mprec.out', f"./debugging/sp_mprec.{str(counter).zfill(6)}.out" )
+        shutil.copy('./temp_lpj/output/sp_tot_runoff.out', f"./debugging/sp_tot_runoff.{str(counter).zfill(6)}.out" )
+        #import lpj lai and precipitation data
+        lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', var='lai', method = 'cumulative')
+        lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
+        #reinitialize the flow router
+        fr = FlowRouter(mg,method = 'd8', runoff_rate = mg.at_node['precipitation'])
+ 
     
-    #import lpjguess results
-    lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', method = 'cumulative')
-
     #apply uplift
     mg.at_node['bedrock__elevation'][mg.core_nodes] += uplift_per_step
     
@@ -322,7 +328,7 @@ while elapsed_time < totalT:
         ##Create Soil Depth Maps
         plt.figure()
         imshow_grid(mg,'soil__depth',grid_units=['m','m'],var_name=
-                'Elevation',cmap='terrain')
+                'Elevation',cmap='terrain', limits = [0, 1.5])
         plt.savefig('./ll_output/SoilDepth/SD_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
         #Create SoilProd Maps
@@ -330,6 +336,12 @@ while elapsed_time < totalT:
         imshow_grid(mg,'soil_production__rate')
         plt.savefig('./ll_output/SoilP/SoilP_'+str(int(elapsed_time/outInt)).zfill(zp)+'.png')
         plt.close()
+        #create Vegi_Density maps
+        plt.figure()
+        imshow_grid(mg, 'vegetation__density', limits = [0,1])
+        plt.savefig('./ll_output/Veg/vegidensity_'+ str(int(elapsed_time/outInt)).zfill(zp)+'.png')
+        plt.close()
+
 
     elapsed_time += dt #update elapsed time
 tE = time.time()

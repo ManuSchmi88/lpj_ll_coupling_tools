@@ -28,10 +28,10 @@ nrows = 21 #number of rows
 dx    = 100 #spacing between nodes
 
 #Model Runtime Parameters
-totalT = 90e6 #total model runtime
-ssT    = 90e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
-sfT    = 90e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
-spin_up = 90e6 
+totalT = 1e6 #total model runtime
+ssT    = 1e6  #spin-up time before sin-modulation, set to same value as totalT for steady-state-simulations
+sfT    = 1e6  #spin-up time before step-change-modulation, set to same value as totalT for steady-state-simulations
+spin_up = 0.9e6 
 dt = 100
 
 #Uplift
