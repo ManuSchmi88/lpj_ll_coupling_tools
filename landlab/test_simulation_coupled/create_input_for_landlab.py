@@ -68,6 +68,11 @@ def read_csv_files(filename, ftype='lai', pft_class='total'):
         df_grp = df.groupby(['Lon', 'Lat', 'Year', 'Stand'], sort = False).mean()
         df_grp = df_grp.apply(_calc_fpc, 1).sum(axis=1)
         x = df_grp.reset_index().set_index(['Year', 'Stand'])
+
+        del x['Lon'], x['Lat']
+
+        data = x.mean(level=1).T / 100
+    
     
     elif ftype == 'mprec':
         df = pd.read_table(filename, delim_whitespace=True)[index_cols + month_cols]        
@@ -76,20 +81,13 @@ def read_csv_files(filename, ftype='lai', pft_class='total'):
         for mc in month_cols:
             del df[mc]
         x = df.reset_index().set_index(['Year', 'Stand'])
+        del x['index'], x['Lon'], x['Lat']
+
+        data = x.mean(level=1).T / 10
+
     else:
         raise NotImplementedError    
  
-    del x['Lon'], x['Lat']
-
-    # TODO: this 100 should be parameterized, is years in output
-    #       or even removed
-
-    data = x.mean(level=1).T / 100
-    #fpc_array.to_csv(f'fpc_{v}.csv', index=False)
-    #fpc_array = np.genfromtxt(filename, delimiter = ';', names = True)
-
-    #'little' hacky right now. This returns a recarray object created
-    #from pandas-dataframe.
     return data.to_records()
 
 def map_fpc_per_landform_on_grid(grid, fpc_array):
@@ -111,6 +109,21 @@ def map_fpc_per_landform_on_grid(grid, fpc_array):
     #print('map_fpc_per_landform_on_grid was run')
     return fpc_grid
 
+def map_precip_per_landform_on_grid(grid, precip_array):
+    """
+    Extract the precipipation values per landform and maps it in the 'precipitation'
+    datafield of the landlab grid object
+
+    Right now (15.11.2018) this method is a little bit overkill because we don't have
+    spatial variable rainfall. But for future uses with a more precise downscaling or 
+    bigger grids, this would be important.
+    """
+
+    precip_grid = np.zeros(np.shape(grid.at_node['precipitation']))
+    for landform in precip_array.dtype.names[1:]:
+        precip_grid[grid.at_node['landform__ID'] == int(landform)] = precip_array[str(landform)]
+
+    return precip_grid
 
 def calc_cumulative_fpc(tree_fpc, grass_fpc, shrub_fpc):
     """
@@ -128,6 +141,7 @@ def calc_cumulative_fpc(tree_fpc, grass_fpc, shrub_fpc):
 
 #@timed(logger) 
 def lpj_import_run_one_step(grid, inputFile, var='lai', method = 'cumulative'):
+    
     """
     main function for input_conversion to be called from landlab driver file
     """
@@ -149,16 +163,32 @@ def lpj_import_run_one_step(grid, inputFile, var='lai', method = 'cumulative'):
                 grid.add_zeros('node', 'shrub_fpc')
 
             grass_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'grass')
-            tree_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'tree')
+            tree_fpc  = read_csv_files(inputFile, ftype = 'lai', pft_class = 'tree')
             shrub_fpc = read_csv_files(inputFile, ftype = 'lai', pft_class = 'shrub')
 
             #map values to individual fiels
             grid.at_node['grass_fpc'] = map_fpc_per_landform_on_grid(grid, grass_fpc)
-            grid.at_node['tree_fpc'] = map_fpc_per_landform_on_grid(grid, tree_fpc)
+            grid.at_node['tree_fpc']  = map_fpc_per_landform_on_grid(grid, tree_fpc)
             grid.at_node['shrub_fpc'] = map_fpc_per_landform_on_grid(grid, shrub_fpc)
+
     elif var == 'mprec':
-        # TODO: Manu, whatever you want to do with the extra input
+        
         prec = read_csv_files(inputFile, ftype = var)
+
+        #Check if precipitation field already exists in grid, if not, initiate it
+        if 'precipitation' in grid.keys('node'):
+            #Precipitation field already initiated
+            pass
+        else:
+            grid.add_zeros('node', 'precipitation')
+
+        
+        precip_array = read_csv_files(inputFile, ftype = 'mprec')
+        grid.at_node['precipitation'] = map_precip_per_landform_on_grid(grid, precip_array )
+        #add precipitation to modelgrid
+        #TODO: check if this has spatial variability
+        #grid.at_node['precipitation'][:] = prec
+
     else: 
         raise NotImplementedError
 
