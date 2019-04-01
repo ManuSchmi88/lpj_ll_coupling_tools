@@ -24,6 +24,7 @@ from landlab.io.netcdf import write_netcdf
 from landlab.io.netcdf import read_netcdf
 #coupling-specific
 from create_input_for_landlab import lpj_import_run_one_step 
+from create_all_landforms import create_all_landforms
 #external modules
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
@@ -78,8 +79,8 @@ mg.add_zeros('node', 'fluvial_erodibility__bedrock')
 #initial topography must be of filename/type 'topoSeed.npy'
 if os.path.isfile('initial_topography.npy'):
     topoSeed = np.load('initial_topography.npy')
-    mg.at_node['topographic__elevation'] += topoSeed 
-    mg.at_node['bedrock__elevation'] += topoSeed
+    mg.at_node['topographic__elevation'] += topoSeed + baseElevation
+    mg.at_node['bedrock__elevation'] += topoSeed + baseElevation
     if os.path.isfile('initial_soildepth.npy'):
         soilSeed = np.load('initial_soildepth.npy')
         mg.at_node['soil__depth'] = soilSeed
@@ -209,6 +210,8 @@ while elapsed_time < totalT:
         outInt = outIntSpinUp
         if elapsed_time == 0:
             
+            #create all possible landform__ID's in here ONCE before lpjguess is called
+            create_all_landforms(upliftRate, totalT, elevationStepBin, mg)
             write_netcdf('./temp_output/current_output.nc',
                    mg,format='NETCDF4', attrs = {'lgt.lat' : latitude,
                                                  'lgt.lon' : longitude,
@@ -219,14 +222,14 @@ while elapsed_time < totalT:
                                                  'lgt.elevation_step' : elevationStepBin})
 
             lpj.run_one_step(counter, dt = dt)
-
             #backup lpj results
             shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
             shutil.copy('./temp_lpj/output/sp_mprec.out', f"./debugging/sp_mprec.{str(counter).zfill(6)}.out" )
             shutil.copy('./temp_lpj/output/sp_tot_runoff.out', f"./debugging/sp_tot_runoff.{str(counter).zfill(6)}.out" )
+            shutil.copy('./temp_lpj/output/climate.out', f"./debugging/climate.{str(counter).zfill(6)}.out" )
             #import lpj lai and precipitation data
             lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out',
-                    var='lai', method = 'individual')
+                    var='lai', method = LPJGUESS_VEGI_MAPPING)
             lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
             #reinitialize the flow router
             fr = FlowRouter(mg,method = 'd8', runoff_rate = mg.at_node['precipitation'])
@@ -244,9 +247,10 @@ while elapsed_time < totalT:
         shutil.copy('./temp_lpj/output/sp_lai.out', f"./debugging/sp_lai.{str(counter).zfill(6)}.out" )
         shutil.copy('./temp_lpj/output/sp_mprec.out', f"./debugging/sp_mprec.{str(counter).zfill(6)}.out" )
         shutil.copy('./temp_lpj/output/sp_tot_runoff.out', f"./debugging/sp_tot_runoff.{str(counter).zfill(6)}.out" )
+        shutil.copy('./temp_lpj/output/climate.out', f"./debugging/climate.{str(counter).zfill(6)}.out" )
         #import lpj lai and precipitation data
         lpj_import_run_one_step(mg,'./temp_lpj/output/sp_lai.out', var='lai',
-                method = 'individual')
+                method =  LPJGUESS_VEGI_MAPPING)
         lpj_import_run_one_step(mg,'./temp_lpj/output/sp_mprec.out', var='mprec')
         #reinitialize the flow router
         fr = FlowRouter(mg,method = 'd8', runoff_rate = mg.at_node['precipitation'])
@@ -281,16 +285,21 @@ while elapsed_time < totalT:
     #reinitalize Diffuser
     DDdiff = DepthDependentDiffuser(mg, 
             linear_diffusivity = linDiff,
-            soil_transport_decay_depth = 0.75)
+            soil_transport_decay_depth = soilProductionDecayDepth)
 
     #update K_sp
     #after the first-timestep there is LPJ information about phenologic groups so now use them instead of total vegetation-cover
-    n_grass_fpc = nGrass * (mg.at_node['grass_fpc'] / vRef)**w
-    n_tree_fpc  = nTree  * (mg.at_node['tree_fpc']  / vRef)**w
-    n_shrub_fpc = nShrub * (mg.at_node['shrub_fpc'] / vRef)**w
-    n_total  = (nSoil + n_tree_fpc + n_shrub_fpc + n_grass_fpc)
-    #n_v_frac = nSoil + (nVRef * (mg.at_node['vegetation__density'] / vRef)) #self.vd = VARIABLE!
-    n_v_frac = n_total
+    if LPJGUESS_VEGI_MAPPING == "individual":
+        n_grass_fpc = nGrass * (mg.at_node['grass_fpc'] / vRef)**w
+        n_tree_fpc  = nTree  * (mg.at_node['tree_fpc']  / vRef)**w
+        n_shrub_fpc = nShrub * (mg.at_node['shrub_fpc'] / vRef)**w
+        n_total  = (nSoil + n_tree_fpc + n_shrub_fpc + n_grass_fpc)
+        n_v_frac = n_total
+    elif LPJGUESS_VEGI_MAPPING == "cumulative":
+        n_v_frac = nSoil + (nVRef * (mg.at_node['vegetation__density'] / vRef)) #self.vd = VARIABLE!
+    else:
+        print('Unsupported Argument for Vegetation Mapping')
+    
     n_v_frac_to_w = np.power(n_v_frac, w)
     Prefect = np.power(n_v_frac_to_w, 0.9)
     Kvs = k_sediment * Ford/Prefect
@@ -375,6 +384,5 @@ while elapsed_time < totalT:
 
 
     elapsed_time += dt #update elapsed time
-tE = time.time()
 print()
 print('End of  Main Loop. So far it took {}s to get here. No worries homeboy...'.format(tE-t0))

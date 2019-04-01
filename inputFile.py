@@ -36,6 +36,7 @@ dt = 100
 
 #Uplift
 upliftRate = 1.e-4 #m/yr, Topographic uplift rate
+baseElevation = 100 
 
 #Surface Processes
 #Linear Diffusion:
@@ -92,6 +93,7 @@ LPJGUESS_INS_FILE_TPL = 'lpjguess.ins.tpl'
 LPJGUESS_BIN = '/esd/esd01/data/mschmid/coupling/build/guess'
 LPJGUESS_CO2FILE = 'co2_TraCE_21ka_1990CE.txt'
 LPJGUESS_FORCINGS_STRING = 'Climate_TraCE21ka' #Testing: This automatically adds the _precip.nc/_temp.nc/_rad.nc to filesnames.
+LPJGUESS_VEGI_MAPPING     = 'individual'
 
 #landform classifier input:
 classificationType = 'SIMPLE'
